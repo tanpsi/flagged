@@ -37,5 +37,5 @@ def verify_token(
         raise NotImplementedError("Only HS256 algorithm is implemeted yet")
     try:
         return jwt.decode(token, key=secret, algorithms=[alg.value])
-    except DecodeError or InvalidSignatureError:
+    except (DecodeError, InvalidSignatureError):
         return False
