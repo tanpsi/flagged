@@ -9,7 +9,7 @@ dependencies = [
     "fastapi[standard]>=0.115.12",
     "passlib[argon2,bcrypt]>=1.7.4",
     "pyjwt[crypto]>=2.10.1",
-    "sqlalchemy>=2.0.41",
+    "sqlalchemy[asyncio]>=2.0.41",
 ]
 
 [dependency-groups]
