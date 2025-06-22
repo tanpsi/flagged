@@ -16,6 +16,8 @@ JWT_ALG = "HS256"
 JWT_HS256_SECRET = None  # generated randomly on start
 JWT_EXPIRY_TIMEDELTA = 7 * 24 * 60  # in minutes
 PASSWD_HASH_SCHEME = "argon2"
+ADMIN_USER = "admin"
+ADMIN_PASSWORD = "flagged"
 
 ## DB
 
@@ -24,3 +26,18 @@ DB_PORT = 3306
 DB_USER = "root"
 DB_PASSWD = "secret"
 DB_NAME = "flagged"
+
+## Challenges
+
+CHAL_NAME_MAX_LEN = 64
+CHAL_DESC_MAX_LEN = 1024
+FLAG_MAX_LEN = 256
+# FILE_STORE_DIR = '/var/flagged/'
+FILE_STORE_DIR = None  # replaced with a tempdir on start
+FILE_PATH_MAX_LEN = 64
+FILE_NAME_MAX_LEN = 64
+FILE_BUFF_SIZE = 65536
+
+## Teams
+
+TEAM_NAME_MAX_LEN = 64

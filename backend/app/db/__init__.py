@@ -1,3 +1,5 @@
+import logging
+
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 
 from app.config import DB_HOST, DB_PORT, DB_USER, DB_PASSWD, DB_NAME
@@ -20,3 +22,5 @@ session_genr = async_sessionmaker(bind=engine, expire_on_commit=False)
 async def init():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+    # TODO: remove after everything is working
+    logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)

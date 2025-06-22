@@ -9,12 +9,11 @@ from fastapi import Depends, HTTPException, status
 from app.auth import JWTmgmt, hashing
 from app.db import session_genr
 from app.auth import bearer
-from app.models.auth import UserReg
-from app.db.models import UserDB, ExpToken
+from app.db.models import ExpToken, User as UserDB
 from app.config import JWT_EXPIRY_TIMEDELTA
 
 
-async def gen_token(username) -> str:
+async def gen_token(username: str) -> str:
     return JWTmgmt.generate_token(
         {
             "username": username,
@@ -25,24 +24,7 @@ async def gen_token(username) -> str:
     )
 
 
-async def add_user(user: UserReg) -> bool:
-    async with session_genr() as session:
-        try:
-            async with session.begin():
-                session.add(
-                    UserDB(
-                        username=user.username,
-                        email=user.email,
-                        pass_hash=hashing.hash(user.password),
-                    )
-                )
-        except IntegrityError:
-            return False
-        else:
-            return True
-
-
-async def check_user_passwd(username, passwd) -> bool:
+async def verify_user_passwd(username: str, passwd: str) -> bool:
     async with session_genr() as session:
         stmt = select(UserDB.pass_hash).filter_by(username=username)
         results = await session.execute(stmt)
@@ -66,7 +48,7 @@ async def expire_token(token: str) -> bool:
                 return True
 
 
-async def verify_token(token: Annotated[str, Depends(bearer.passwd)]) -> str:
+async def verify_token(token: Annotated[str, Depends(bearer.passwd)]) -> UserDB:
     exc = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Bearer token invalid",
@@ -83,13 +65,13 @@ async def verify_token(token: Annotated[str, Depends(bearer.passwd)]) -> str:
         else:
             raise exc
         try:
-            (
+            user = (
                 await session.execute(
-                    select(UserDB.id).filter_by(username=token_data["username"])
+                    select(UserDB).filter_by(username=token_data["username"])
                 )
-            ).one()
+            ).scalar_one()
         except (KeyError, NoResultFound):
             raise exc
     if token_data["exp"] < time():
         raise exc
-    return token_data["username"]
+    return user
