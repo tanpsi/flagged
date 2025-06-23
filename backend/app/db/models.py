@@ -4,7 +4,7 @@ from sqlalchemy.orm import Mapped, mapped_column, DeclarativeBase, relationship
 from sqlalchemy.dialects.mysql import CHAR
 from sqlalchemy.ext.asyncio import AsyncAttrs
 
-from app.auth import hashing
+from app.utils import hashing
 import app.config as c
 
 
@@ -27,7 +27,7 @@ class User(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     username: Mapped[str] = mapped_column(String(c.USERNAME_MAX_LEN))
     email: Mapped[str] = mapped_column(String(c.EMAIL_ADDR_MAX_LEN))
-    admin: Mapped[bool] = mapped_column(Boolean, default=False)
+    admin: Mapped[bool] = mapped_column(Boolean)
     pass_hash: Mapped[str] = mapped_column(
         String(HASH_LEN).with_variant(CHAR(HASH_LEN), "mysql", "mariadb")
     )

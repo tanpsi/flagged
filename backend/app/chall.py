@@ -8,7 +8,12 @@ import os
 
 from app.db import session_genr
 from app.models.chall import ChallReg
-from app.db.models import Chall as ChallDB, File as FileDB, Solve as SolveDB
+from app.db.models import (
+    User as UserDB,
+    Chall as ChallDB,
+    File as FileDB,
+    Solve as SolveDB,
+)
 from app.config import FILE_STORE_DIR, FILE_BUFF_SIZE
 
 
@@ -82,7 +87,15 @@ async def create_solve(user_id: int, chall_id: int) -> bool:
     async with session_genr() as session:
         try:
             async with session.begin():
-                session.add(SolveDB(user_id=user_id, chall_id=chall_id))
+                if not (user := await session.get(UserDB, user_id)):
+                    raise RuntimeError("Logged user not there")
+                session.add(
+                    SolveDB(
+                        user_id=user_id,
+                        team_id=(await user.awaitable_attrs.team).id,
+                        chall_id=chall_id,
+                    )
+                )
         except IntegrityError:
             return False
     return True

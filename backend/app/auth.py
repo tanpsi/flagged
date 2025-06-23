@@ -5,12 +5,15 @@ from typing import Annotated
 from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound, IntegrityError
 from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 
-from app.auth import JWTmgmt, hashing
+from app.utils import JWTmgmt, hashing
 from app.db import session_genr
-from app.auth import bearer
 from app.db.models import ExpToken, User as UserDB
 from app.config import JWT_EXPIRY_TIMEDELTA
+
+bearer_passwd = OAuth2PasswordBearer("/auth/login")
+bearer_passwd_form = OAuth2PasswordRequestForm
 
 
 async def gen_token(username: str) -> str:
@@ -34,7 +37,7 @@ async def verify_user_passwd(username: str, passwd: str) -> bool:
             return False
         if not hashing.verify(passwd, stored_hash):
             return False
-        return True
+    return True
 
 
 async def expire_token(token: str) -> bool:
@@ -44,11 +47,10 @@ async def expire_token(token: str) -> bool:
                 session.add(ExpToken(token=token))
             except IntegrityError:
                 return False
-            else:
-                return True
+    return True
 
 
-async def verify_token(token: Annotated[str, Depends(bearer.passwd)]) -> UserDB:
+async def verify_token(token: Annotated[str, Depends(bearer_passwd)]) -> UserDB:
     exc = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Bearer token invalid",
@@ -70,6 +72,7 @@ async def verify_token(token: Annotated[str, Depends(bearer.passwd)]) -> UserDB:
                     select(UserDB).filter_by(username=token_data["username"])
                 )
             ).scalar_one()
+            await user.awaitable_attrs.team
         except (KeyError, NoResultFound):
             raise exc
     if token_data["exp"] < time():

@@ -1,13 +1,12 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import StringConstraints
+from sqlalchemy.exc import NoResultFound
 
+from app.models.user import UserReg, UserRegResp, UserUpdate, User, UserPub, UserPubList
 from app.db.models import User as UserDB
-from app.models.user import UserReg, UserRegResp, ChangePassResp, User, UserPub, UserPubList
 from app.auth import verify_token
-from app.user import create_user, change_user_passwd, get_user_pub, get_user_pub_list, get_user
-from app.config import USERNAME_MAX_LEN
+from app.user import create_user, get_user_pub, get_user_pub_list, get_user, update_user
 
 router = APIRouter(
     prefix="/user",
@@ -27,29 +26,39 @@ async def add_user(
     )
 
 
+@router.put("/update")
+async def change_user_details(
+    user: Annotated[UserDB, Depends(verify_token)], new_details: UserUpdate
+):
+    try:
+        if await update_user(user.id, new_details):
+            return {"message": "User updated"}
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Username or email already in use",
+            )
+    except NoResultFound:
+        raise RuntimeError("Logged user's id not corresponding to a user")
 
-@router.put("/change-password")
-async def change_passwd(
-    user: Annotated[UserDB, Depends(verify_token)],
-    new_password: Annotated[
-        str, StringConstraints(min_length=1, max_length=USERNAME_MAX_LEN)
-    ],
-) -> ChangePassResp:
-    if await change_user_passwd(user.username, new_password):
-        return ChangePassResp(message="Password changed")
-    raise RuntimeError
 
 @router.get("/")
-async def get_logged_user_details(user: Annotated[UserDB, Depends(verify_token)]) -> User:
-    return await get_user(user)
+async def get_logged_user_details(
+    user: Annotated[UserDB, Depends(verify_token)],
+) -> User:
+    return await get_user(user.id)
 
 
 @router.get("s/<user_id>")
 async def get_other_user_details(user_id: int) -> UserPub:
     try:
-        return await get_user_pub(user_id=user_id)
-    except ZeroDivisionError:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No user associated with the id")
+        return await get_user_pub(user_id)
+    except NoResultFound:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No user associated with the id",
+        )
+
 
 @router.get("s")
 async def get_user_list() -> UserPubList:
