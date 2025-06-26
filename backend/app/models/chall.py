@@ -1,4 +1,4 @@
-from typing import Annotated, Literal, Optional
+from typing import Annotated
 
 from pydantic import BaseModel, StringConstraints
 
@@ -7,22 +7,48 @@ from app.config import CHAL_NAME_MAX_LEN, CHAL_DESC_MAX_LEN, FLAG_MAX_LEN
 
 class ChallReg(BaseModel):
     name: Annotated[str, StringConstraints(min_length=1, max_length=CHAL_NAME_MAX_LEN)]
-    desc: Optional[Annotated[str, StringConstraints(max_length=CHAL_DESC_MAX_LEN)]]
+    desc: Annotated[str | None, StringConstraints(max_length=CHAL_DESC_MAX_LEN)]
     flag: Annotated[str, StringConstraints(min_length=1, max_length=FLAG_MAX_LEN)]
     points: int
 
 
-class ChallResp(BaseModel):
+class ChallUpdate(BaseModel):
+    name: Annotated[
+        str | None, StringConstraints(min_length=1, max_length=CHAL_NAME_MAX_LEN)
+    ]
+    desc: Annotated[str | None, StringConstraints(max_length=CHAL_DESC_MAX_LEN)]
+    flag: Annotated[
+        str | None, StringConstraints(min_length=1, max_length=FLAG_MAX_LEN)
+    ]
+    points: int | None
+
+
+class TeamForSolveForChall(BaseModel):
+    id: int
+    name: str
+
+
+class SolveForChall(BaseModel):
+    team: TeamForSolveForChall
+    points: int
+
+
+class ChallSolves(BaseModel):
+    solves: list[SolveForChall]
+
+
+class FileForChall(BaseModel):
+    id: int
+    name: str
+
+
+class Chall(BaseModel):
     name: str
     desc: str
     points: int
     solved_cnt: int
+    files: list[FileForChall]
 
 
-class SolveReg(BaseModel):
-    chall_id: int
-    flag: Annotated[str, StringConstraints(min_length=1, max_length=FLAG_MAX_LEN)]
-
-
-class File(BaseModel):
-    name: str
+class ChallList(BaseModel):
+    challs: list[Chall]

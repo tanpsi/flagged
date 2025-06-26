@@ -30,7 +30,7 @@ async def create_team(user_id: int, team_details: TeamReg) -> bool:
                 if not user:
                     raise NoResultFound
                 if not (tmp := await user.awaitable_attrs.team):
-                    tmp = team
+                    tmp = team  # noqa: F841
                 else:
                     raise ZeroDivisionError
         except IntegrityError:

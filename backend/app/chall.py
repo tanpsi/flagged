@@ -7,7 +7,16 @@ import hashlib
 import os
 
 from app.db import session_genr
-from app.models.chall import ChallReg
+from app.models.chall import (
+    ChallReg,
+    ChallUpdate,
+    TeamForSolveForChall,
+    SolveForChall,
+    ChallSolves,
+    FileForChall,
+    Chall,
+    ChallList,
+)
 from app.db.models import (
     User as UserDB,
     Chall as ChallDB,
@@ -41,6 +50,26 @@ async def create_chall(chall: ChallReg) -> None:
                     points=chall.points,
                 )
             )
+
+
+async def update_chall(chall_id: int, details: ChallUpdate) -> bool:
+    async with session_genr() as session:
+        try:
+            async with session.begin():
+                chall = await session.get(ChallDB, chall_id)
+                if not chall:
+                    raise NoResultFound
+                if details.name:
+                    chall.name = details.name
+                if details.desc:
+                    chall.desc = details.desc
+                if details.flag:
+                    chall.flag = details.flag
+                if details.points:
+                    chall.points = details.points
+        except IntegrityError:
+            return False
+    return True
 
 
 async def create_file(chall_id: int, file: UploadFile) -> bool:
@@ -101,5 +130,93 @@ async def create_solve(user_id: int, chall_id: int) -> bool:
     return True
 
 
-async def remove_file():
-    pass
+async def delete_file(file_id: int):
+    async with session_genr() as session:
+        try:
+            async with session.begin():
+                file = await session.get(FileDB, file_id)
+                if not file:
+                    raise NoResultFound
+                try:
+                    os.unlink(os.path.join(files_dir.name, file.path))
+                except FileNotFoundError:
+                    pass
+                await session.delete(file)
+        except IntegrityError:
+            return False
+    return True
+
+
+async def delete_chall(chall_id: int):
+    async with session_genr() as session:
+        try:
+            async with session.begin():
+                chall = await session.get(ChallDB, chall_id)
+                if not chall:
+                    raise NoResultFound
+                for file in await chall.awaitable_attrs.files:
+                    await session.delete(file)
+                for solve in await chall.awaitable_attrs.solves:
+                    await session.delete(solve)
+                await session.delete(chall)
+        except IntegrityError:
+            return False
+    return True
+
+
+async def get_chall_solves_from_obj(chall: ChallDB) -> ChallSolves:
+    return ChallSolves(
+        solves=[
+            SolveForChall(
+                team=TeamForSolveForChall(
+                    id=(await solve.awaitable_attrs.team).id,
+                    name=(await solve.awaitable_attrs.team).name,
+                ),
+                points=chall.points,
+            )
+            for solve in await chall.awaitable_attrs.solves
+        ]
+    )
+
+
+async def get_chall_files(chall: ChallDB) -> list[FileForChall]:
+    return [
+        FileForChall(id=file.id, name=file.name)
+        for file in await chall.awaitable_attrs.files
+    ]
+
+
+async def get_chall_from_obj(chall: ChallDB) -> Chall:
+    return Chall(
+        name=chall.name,
+        desc=chall.desc,
+        points=chall.points,
+        solved_cnt=len(await chall.awaitable_attrs.solves),
+        files=await get_chall_files(chall),
+    )
+
+
+async def get_chall_solves(chall_id: int) -> ChallSolves:
+    async with session_genr() as session:
+        chall = await session.get(ChallDB, chall_id)
+        if not chall:
+            raise NoResultFound
+        return await get_chall_solves_from_obj(chall)
+
+
+async def get_chall(chall_id: int) -> Chall:
+    async with session_genr() as session:
+        chall = await session.get(ChallDB, chall_id)
+        if not chall:
+            raise NoResultFound
+        return await get_chall_from_obj(chall)
+
+
+async def get_chall_list() -> ChallList:
+    async with session_genr() as session:
+        return ChallList(
+            challs=[
+                await get_chall_from_obj(chall)
+                for chall in await session.scalars(select(ChallDB))
+            ]
+        )
