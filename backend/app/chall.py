@@ -188,6 +188,7 @@ async def get_chall_files(chall: ChallDB) -> list[FileForChall]:
 
 async def get_chall_from_obj(chall: ChallDB) -> Chall:
     return Chall(
+        id=chall.id,
         name=chall.name,
         desc=chall.desc,
         points=chall.points,

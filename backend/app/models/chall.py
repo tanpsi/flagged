@@ -43,6 +43,7 @@ class FileForChall(BaseModel):
 
 
 class Chall(BaseModel):
+    id: int
     name: str
     desc: str
     points: int
