@@ -28,6 +28,7 @@ class User(Base):
     username: Mapped[str] = mapped_column(String(c.USERNAME_MAX_LEN))
     email: Mapped[str] = mapped_column(String(c.EMAIL_ADDR_MAX_LEN))
     admin: Mapped[bool] = mapped_column(Boolean)
+    email_verified: Mapped[bool] = mapped_column(Boolean)
     pass_hash: Mapped[str] = mapped_column(
         String(HASH_LEN).with_variant(CHAR(HASH_LEN), "mysql", "mariadb")
     )

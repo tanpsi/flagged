@@ -1,23 +1,46 @@
-import os
-from dotenv import load_dotenv
+from datetime import datetime, timedelta
 from email.message import EmailMessage
+
 import aiosmtplib
 
-load_dotenv()
+from app.db.models import User as UserDB
+from app.utils.JWTmgmt import generate_token
+from app.config import (
+    BASE_URL,
+    SMTP_HOST,
+    SMTP_PORT,
+    SMTP_USER,
+    SMTP_PASS,
+    SMTP_FROM,
+    SMTP_TLS,
+    SMTP_STARTTLS,
+    EMAIL_JWT_EXPIRY,
+)
 
-HOST = os.getenv("EMAIL_HOST")
-PORT = int(os.getenv("EMAIL_PORT"))
-USER = os.getenv("EMAIL_USER")
-PASS = os.getenv("EMAIL_PASS")
-VERIF_URL = os.getenv("VERIF_URL")
+VERIFY_URL = f"{BASE_URL}/user/email/verify"
 
 
-async def send_verification_email(email: str, token: str):
-    msg = EmailMessage()
-    msg["From"], msg["To"] = USER, email
-    msg["Subject"] = "Verify your email"
-    link = f"{VERIF_URL}?token={token}"
-    msg.set_content(f"Please verify: {link}")
+async def send_email(email: EmailMessage):
+    if SMTP_TLS:
+        use_tls = not SMTP_STARTTLS
+        start_tls = SMTP_STARTTLS
+    else:
+        use_tls = start_tls = False
     await aiosmtplib.send(
-        msg, hostname=HOST, port=PORT, start_tls=True, username=USER, password=PASS
+        email,
+        hostname=SMTP_HOST,
+        port=SMTP_PORT,
+        username=SMTP_USER,
+        password=SMTP_PASS,
+        use_tls=use_tls,
+        start_tls=start_tls,
     )
+
+
+async def send_verification_email(user: UserDB):
+    msg = EmailMessage()
+    msg["From"], msg["To"] = SMTP_FROM, user.email
+    msg["Subject"] = "Verify your email"
+    link = f"{VERIFY_URL}?token={generate_token({'id': user.id, 'email': user.email, 'exp': int((datetime.now() + timedelta(minutes=EMAIL_JWT_EXPIRY)).timestamp())})}"
+    msg.set_content(f"Please verify: {link}")
+    await send_email(msg)

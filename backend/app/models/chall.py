@@ -47,6 +47,7 @@ class Chall(BaseModel):
     name: str
     desc: str
     points: int
+    flag_hash: str
     solved_cnt: int
     files: list[FileForChall]
 

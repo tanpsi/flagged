@@ -29,6 +29,11 @@ class UserUpdate(BaseModel):
     ]
 
 
+class UserUpdateInternal(UserUpdate):
+    admin: bool | None
+    email_verified: bool | None
+
+
 class UserPubForList(BaseModel):
     id: int
     name: str
@@ -53,6 +58,7 @@ class UserPub(UserPubForList):
 
 class User(UserPub):
     email: str
+    email_verified: bool
     admin: bool
 
 

@@ -1,10 +1,11 @@
+import os
+import hashlib
+import tempfile
+
 from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound, IntegrityError
 from fastapi import UploadFile
 import aiofiles
-import tempfile
-import hashlib
-import os
 
 from app.db import session_genr
 from app.models.chall import (
@@ -23,6 +24,7 @@ from app.db.models import (
     File as FileDB,
     Solve as SolveDB,
 )
+from app.utils import hashing
 from app.config import FILE_STORE_DIR, FILE_BUFF_SIZE
 
 
@@ -192,6 +194,7 @@ async def get_chall_from_obj(chall: ChallDB) -> Chall:
         name=chall.name,
         desc=chall.desc,
         points=chall.points,
+        flag_hash=hashing.hash(chall.flag),
         solved_cnt=len(await chall.awaitable_attrs.solves),
         files=await get_chall_files(chall),
     )

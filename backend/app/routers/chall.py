@@ -119,6 +119,11 @@ async def remove_file(
     return {"message": "File deleted"}
 
 
+@router.get("s/<chall_id>/file/<file_id>")
+async def get_file():
+    pass
+
+
 @router.post("s/<chall_id>/solve")
 async def add_solve(
     user: Annotated[db.User, Depends(verify_token)],

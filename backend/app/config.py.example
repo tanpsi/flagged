@@ -1,6 +1,9 @@
 # TODO
 # Develop a better way to store and modify configuration
 
+BASE_URL = "http://localhost:8000"
+FRONTEND_BASE_URL = "http://localhost:3000"
+
 ## DB
 
 DB_HOST = "localhost"
@@ -20,11 +23,11 @@ PASSWD_HASH_SCHEME = "argon2"
 ADMIN_USER = "admin"
 ADMIN_PASSWORD = "flagged"
 VERIFY_USER_EMAIL = True
+EMAIL_JWT_EXPIRY = 60 # in minutes
 ALLOW_PASSWORD_RESET = True
 
 ## SMTP
 
-SMTP_ENABLE = True
 SMTP_HOST = "smtp.gmail.com"
 SMTP_PORT = 465
 SMTP_USER = "you@example.com"

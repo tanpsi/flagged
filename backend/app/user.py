@@ -1,9 +1,11 @@
+import time
+
 from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound, IntegrityError
 
 from app.models.user import (
     UserReg,
-    UserUpdate,
+    UserUpdateInternal,
     User,
     UserPub,
     ChallForUserPub,
@@ -12,7 +14,7 @@ from app.models.user import (
 )
 from app.db.models import User as UserDB
 from app.db import session_genr
-from app.utils import hashing
+from app.utils import hashing, JWTmgmt
 from app.config import ADMIN_USER, ADMIN_PASSWORD
 
 
@@ -26,6 +28,7 @@ async def create_user(user: UserReg, admin: bool = False) -> bool:
                         email=user.email,
                         pass_hash=hashing.hash(user.password),
                         admin=admin,
+                        email_verified=False,
                     )
                 )
         except IntegrityError:
@@ -33,7 +36,7 @@ async def create_user(user: UserReg, admin: bool = False) -> bool:
     return True
 
 
-async def update_user(user_id: int, details: UserUpdate) -> bool:
+async def update_user(user_id: int, details: UserUpdateInternal) -> bool:
     async with session_genr() as session:
         try:
             async with session.begin():
@@ -45,9 +48,37 @@ async def update_user(user_id: int, details: UserUpdate) -> bool:
                 if details.password:
                     user.pass_hash = hashing.hash(details.password)
                 if details.email:
-                    user.email = details.email
+                    if user.email != details.email:
+                        user.email = details.email
+                        user.email_verified = False
+                if details.admin:
+                    user.admin = details.admin
+                if details.email_verified:
+                    user.email_verified = details.email_verified
         except IntegrityError:
             return False
+    return True
+
+
+async def verify_user_email_token(token: str) -> bool:
+    d = JWTmgmt.verify_token(token)
+    if not d:
+        return False
+    try:
+        if d["exp"] < time.time():
+            return False
+        user_id = d["id"]
+        email = d["email"]
+    except KeyError:
+        return False
+    async with session_genr() as session:
+        async with session.begin():
+            user = await session.get(UserDB, user_id)
+            if not user:
+                return False
+            if email != user.email:
+                return False
+            user.email_verified = True
     return True
 
 
@@ -127,4 +158,5 @@ async def get_user(user_id: int) -> User:
             **(await get_user_pub_from_obj(user)).model_dump(),
             admin=user.admin,
             email=user.email,
+            email_verified=user.email_verified,
         )
