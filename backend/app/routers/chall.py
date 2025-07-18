@@ -1,6 +1,7 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile
+from fastapi.responses import FileResponse
 from sqlalchemy.exc import NoResultFound
 from pydantic import StringConstraints
 
@@ -18,6 +19,7 @@ from app.chall import (
     get_chall,
     get_chall_list,
     get_chall_solves,
+    get_file,
 )
 from app.config import FILE_NAME_MAX_LEN, FLAG_MAX_LEN
 
@@ -40,7 +42,7 @@ async def add_chall(user: Annotated[db.User, Depends(verify_token)], chall: Chal
     return {"message": "Challenge created"}
 
 
-@router.put("s/<chall_id>/update")
+@router.put("s/{chall_id}/update")
 async def change_chall_details(
     chall_id: int, user: Annotated[db.User, Depends(verify_token)], chall: ChallUpdate
 ):
@@ -59,7 +61,7 @@ async def change_chall_details(
     return {"message": "Challenge updated"}
 
 
-@router.delete("s/<chall_id>/delete")
+@router.delete("s/{chall_id}/delete")
 async def remove_chall(user: Annotated[db.User, Depends(verify_token)], chall_id: int):
     if not user.admin:
         raise HTTPException(
@@ -76,7 +78,7 @@ async def remove_chall(user: Annotated[db.User, Depends(verify_token)], chall_id
     return {"message": "Challenge deleted"}
 
 
-@router.post("s/<chall_id>/file/add")
+@router.post("s/{chall_id}/file/add")
 async def add_file(
     chall_id: int,
     user: Annotated[db.User, Depends(verify_token)],
@@ -100,7 +102,7 @@ async def add_file(
     return {"message": "File added"}
 
 
-@router.post("s/<chall_id>/file/<file_id>/delete")
+@router.post("s/{chall_id}/file/{file_id}/delete")
 async def remove_file(
     user: Annotated[db.User, Depends(verify_token)], chall_id: int, file_id: int
 ):
@@ -119,12 +121,15 @@ async def remove_file(
     return {"message": "File deleted"}
 
 
-@router.get("s/<chall_id>/file/<file_id>")
-async def get_file():
-    pass
+@router.get("s/{chall_id}/file/{file_id}")
+async def get_file_of_chall(chall_id: int, file_id: int):
+    resp = await get_file(file_id)
+    if not resp:
+        return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
+    return resp
 
 
-@router.post("s/<chall_id>/solve")
+@router.post("s/{chall_id}/solve")
 async def add_solve(
     user: Annotated[db.User, Depends(verify_token)],
     chall_id: int,
@@ -153,7 +158,7 @@ async def get_list_of_challs() -> ChallList:
     return await get_chall_list()
 
 
-@router.get("s/<chall_id>")
+@router.get("s/{chall_id}")
 async def get_chall_details(chall_id: int) -> Chall:
     try:
         return await get_chall(chall_id)
@@ -163,7 +168,7 @@ async def get_chall_details(chall_id: int) -> Chall:
         )
 
 
-@router.get("s/<chall_id>/solves")
+@router.get("s/{chall_id}/solves")
 async def get_solves_of_chall(chall_id: int) -> ChallSolves:
     try:
         return await get_chall_solves(chall_id)

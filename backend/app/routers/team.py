@@ -86,7 +86,7 @@ async def get_logged_user_team_details(
     return await get_team(user.team.id)
 
 
-@router.get("s/<team_id>")
+@router.get("s/{team_id}")
 async def get_other_team_details(team_id: int) -> TeamPub:
     try:
         return await get_team_pub(team_id)

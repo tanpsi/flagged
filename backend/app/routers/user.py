@@ -87,7 +87,7 @@ async def get_logged_user_details(
     return await get_user(user.id)
 
 
-@router.get("s/<user_id>")
+@router.get("s/{user_id}")
 async def get_other_user_details(user_id: int) -> UserPub:
     try:
         return await get_user_pub(user_id)

@@ -1,10 +1,12 @@
 import os
 import hashlib
 import tempfile
+from typing import Literal
 
 from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound, IntegrityError
 from fastapi import UploadFile
+from fastapi.responses import FileResponse
 import aiofiles
 
 from app.db import session_genr
@@ -224,3 +226,12 @@ async def get_chall_list() -> ChallList:
                 for chall in await session.scalars(select(ChallDB))
             ]
         )
+
+
+async def get_file(file_id: int) -> FileResponse | Literal[False]:
+    async with session_genr() as session:
+        file = await session.get(FileDB, file_id)
+        if not file:
+            return False
+        print(os.path.join(files_dir.name, file.path), file.name)
+        return FileResponse(path=os.path.join(files_dir.name, file.path), filename=file.name)
