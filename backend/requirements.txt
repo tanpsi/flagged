@@ -1,0 +1,29 @@
+# FastAPI & Web Server
+fastapi
+uvicorn[standard]
+
+# Auth & Security
+passlib[bcrypt]
+python-multipart
+python-jose[cryptography]
+
+# Database & ORM
+sqlalchemy
+aiomysql
+databases
+pymysql
+
+# Async file I/O
+aiofiles
+
+# Environment config
+python-dotenv
+
+# Optional: for backend email sending / validation (if needed)
+email-validator
+
+# Optional: if using CORS in FastAPI
+fastapi[all]
+
+# Optional (for form validation or advanced Pydantic support)
+pydantic
