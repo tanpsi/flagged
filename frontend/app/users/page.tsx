@@ -1,9 +1,8 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Jersey_10 } from "next/font/google";
-import { Jaini_Purva } from "next/font/google";
-import { Outfit } from "next/font/google";
+import { useRouter } from 'next/navigation'; // ✅ 1. Import the useRouter hook
+import { Jersey_10, Jaini_Purva, Outfit } from "next/font/google";
 
 const jersey = Jersey_10({ subsets: ["latin"], weight: "400", variable: "--font-jersey-10" });
 const jainiPurva = Jaini_Purva({ subsets: ["latin"], weight: "400", variable: "--font-jaini-purva" });
@@ -19,16 +18,20 @@ interface User {
 }
 
 export default function UsersPage() {
+  const router = useRouter(); // ✅ 2. Initialize the router
   const [users, setUsers] = useState<User[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterBy, setFilterBy] = useState<"name" | "affiliation" | "country">("name");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  
+  const API_BASE = "http://127.0.0.1:8000";
 
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const res = await fetch("http://127.0.0.1:8000/users");
+        // Using your backend endpoint to get the list of all users
+        const res = await fetch(`${API_BASE}/users`);
         if (!res.ok) throw new Error("Failed to fetch users");
         const data = await res.json();
         setUsers(data.users || []);
@@ -49,6 +52,11 @@ export default function UsersPage() {
       user?.country ?? "";
     return field.toLowerCase().includes(searchTerm.toLowerCase());
   });
+
+  // Function to handle navigation when a row is clicked
+  const handleRowClick = (userId: number) => {
+    router.push(`/users/${userId}`);
+  };
 
   return (
     <div className="min-h-screen bg-[#221633] text-white px-4 py-10">
@@ -83,13 +91,6 @@ export default function UsersPage() {
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
-
-        <button
-          className="bg-blue-600 hover:bg-blue-800 text-white px-8 py-1.5 rounded-sm text-xl ml-5"
-          suppressHydrationWarning
-        >
-          🔍
-        </button>
       </div>
 
       {/* Table */}
@@ -109,7 +110,12 @@ export default function UsersPage() {
             </thead>
             <tbody>
               {filteredUsers.map((user) => (
-                <tr key={user.id} className="hover:bg-[#272727] rounded-xl transition-all">
+                // ✅ 3. Add onClick handler and cursor-pointer for better UX
+                <tr
+                  key={user.id}
+                  className="hover:bg-[#3a2c52] rounded-xl transition-all cursor-pointer"
+                  onClick={() => handleRowClick(user.id)}
+                >
                   <td className="pl-4 py-2 text-[#23D237] font-['Jaini_Purva'] tracking-widest">
                     {user.name}
                   </td>
