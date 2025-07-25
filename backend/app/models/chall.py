@@ -1,4 +1,5 @@
 from typing import Annotated
+from datetime import datetime
 
 from pydantic import BaseModel, StringConstraints
 
@@ -31,6 +32,7 @@ class TeamForSolveForChall(BaseModel):
 class SolveForChall(BaseModel):
     team: TeamForSolveForChall
     points: int
+    time: datetime
 
 
 class ChallSolves(BaseModel):

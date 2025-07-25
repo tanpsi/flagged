@@ -2,6 +2,7 @@ import os
 import hashlib
 import tempfile
 from typing import Literal
+from datetime import datetime
 
 from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound, IntegrityError
@@ -127,6 +128,7 @@ async def create_solve(user_id: int, chall_id: int) -> bool:
                         user_id=user_id,
                         team_id=(await user.awaitable_attrs.team).id,
                         chall_id=chall_id,
+                        time=datetime.now(),
                     )
                 )
         except IntegrityError:
@@ -177,6 +179,7 @@ async def get_chall_solves_from_obj(chall: ChallDB) -> ChallSolves:
                     name=(await solve.awaitable_attrs.team).name,
                 ),
                 points=chall.points,
+                time=solve.time,
             )
             for solve in await chall.awaitable_attrs.solves
         ]
@@ -234,4 +237,6 @@ async def get_file(file_id: int) -> FileResponse | Literal[False]:
         if not file:
             return False
         print(os.path.join(files_dir.name, file.path), file.name)
-        return FileResponse(path=os.path.join(files_dir.name, file.path), filename=file.name)
+        return FileResponse(
+            path=os.path.join(files_dir.name, file.path), filename=file.name
+        )

@@ -1,7 +1,6 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile
-from fastapi.responses import FileResponse
 from sqlalchemy.exc import NoResultFound
 from pydantic import StringConstraints
 
@@ -125,7 +124,9 @@ async def remove_file(
 async def get_file_of_chall(chall_id: int, file_id: int):
     resp = await get_file(file_id)
     if not resp:
-        return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
+        return HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="File not found"
+        )
     return resp
 
 

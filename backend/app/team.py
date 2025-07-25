@@ -29,8 +29,9 @@ async def create_team(user_id: int, team_details: TeamReg) -> bool:
                 user = await session.get(UserDB, user_id)
                 if not user:
                     raise NoResultFound
-                if not (tmp := await user.awaitable_attrs.team):
-                    tmp = team  # noqa: F841
+                if not await user.awaitable_attrs.team:
+                    (await team.awaitable_attrs.users).append(user)
+                    print("HERE!")
                 else:
                     raise ZeroDivisionError
         except IntegrityError:

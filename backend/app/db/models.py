@@ -1,4 +1,6 @@
 from typing import Optional
+from datetime import datetime
+
 from sqlalchemy import String, Boolean, UniqueConstraint, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, DeclarativeBase, relationship
 from sqlalchemy.dialects.mysql import CHAR
@@ -79,6 +81,7 @@ class Solve(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     team_id: Mapped[int] = mapped_column(ForeignKey("teams.id"))
     chall_id: Mapped[int] = mapped_column(ForeignKey("challenges.id"))
+    time: Mapped[datetime] = mapped_column()
     user: Mapped["User"] = relationship(back_populates="solves")
     chall: Mapped["Chall"] = relationship(back_populates="solves")
     team: Mapped["Team"] = relationship(back_populates="solves")
