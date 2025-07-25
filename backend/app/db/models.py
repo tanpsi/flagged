@@ -88,3 +88,10 @@ class Solve(Base):
     __table_args__ = (
         UniqueConstraint("team_id", "chall_id", name="solve_team_chall_uniq"),
     )
+
+class Notification(Base):
+    __tablename__ = "notifications"
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    title: Mapped[str] = mapped_column(String(c.CHAL_NAME_MAX_LEN))
+    content: Mapped[str] = mapped_column(String(c.CHAL_DESC_MAX_LEN))
+    timestamp: Mapped[int] = mapped_column()
