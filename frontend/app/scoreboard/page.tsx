@@ -3,40 +3,43 @@
 import React, { useEffect, useState } from "react";
 import { CheckCircle, History } from "lucide-react";
 
-// Define the types for the data we expect from the API
+// API response types
 type ApiTeam = {
   id: number;
   name: string;
   points: number;
 };
 
-// Update this type to reflect that 'solves' is optional on the public endpoint
-type ApiTeamDetails = {
+type ApiChall = {
   id: number;
   name: string;
-  points: number;
-  users: {
-    id: number;
-    username: string;
-    points: number;
-  }[];
-  solves?: { // Mark solves as optional
-    id: number;
-    name: string;
-    points: number;
-  }[];
+  // ... other chall properties
 };
 
-// The Player type for our internal state
+type ApiChallSolve = {
+  team: {
+    id: number;
+    name: string;
+  };
+  time: string; // ISO 8601 date string
+};
+
+// Internal state type for the scoreboard table
 type Player = {
   rank: number;
-  name:string;
+  name: string;
   totalPoints: number;
   totalFlagged: number;
   lastSolved: string;
 };
 
 type FilterType = "All" | "Solo" | "Teams";
+
+// A map to hold aggregated solve data for each team
+type TeamSolveInfo = {
+  solveCount: number;
+  lastSolvedTime: string;
+};
 
 
 const Scoreboard: React.FC = () => {
@@ -51,36 +54,65 @@ const Scoreboard: React.FC = () => {
       setIsLoading(true);
       setError(null);
       try {
-        const teamsRes = await fetch("http://localhost:8000/teams");
-        if (!teamsRes.ok) {
-            throw new Error(`Failed to fetch teams list. Status: ${teamsRes.status}`);
-        }
+        // 1. Fetch all teams and all challenges concurrently
+        const [teamsRes, challsRes] = await Promise.all([
+          fetch("http://localhost:8000/teams"),
+          fetch("http://localhost:8000/challs"),
+        ]);
+
+        if (!teamsRes.ok) throw new Error(`Failed to fetch teams list. Status: ${teamsRes.status}`);
+        if (!challsRes.ok) throw new Error(`Failed to fetch challenges list. Status: ${challsRes.status}`);
+        
         const teamsData: { teams: ApiTeam[] } = await teamsRes.json();
+        const challsData: { challs: ApiChall[] } = await challsRes.json();
 
-        const playerPromises = (teamsData.teams || []).map(async (team: ApiTeam) => {
-          // The public endpoint provides the essential data directly.
-          // No need for a second fetch call per team if `/teams` gives us what we need.
-          // We'll use the data from the initial list fetch.
+        // 2. Fetch all solves for every challenge
+        const solvePromises = (challsData.challs || []).map(chall =>
+          fetch(`http://localhost:8000/challs/${chall.id}/solves`).then(res => {
+            if (!res.ok) {
+                console.warn(`Could not fetch solves for chall ${chall.id}`);
+                return { solves: [] }; // Return empty solves on failure
+            }
+            return res.json() as Promise<{ solves: ApiChallSolve[] }>;
+          })
+        );
+        
+        const allSolvesResponses = await Promise.all(solvePromises);
+        const allSolves = allSolvesResponses.flatMap(response => response.solves);
 
-          // Since the public endpoint doesn't give us solves, we set totalFlagged to 0.
-          // The scoreboard will rank by points, which is the most important metric.
-          const player = {
-            name: team.name,
-            totalPoints: team.points,
-            // The public API doesn't provide solves, so we can't calculate this.
-            // We can display 'N/A' or 0. Let's use 0 for consistency.
-            totalFlagged: 0, // Or you could fetch details if solves are needed.
-            lastSolved: "N/A",
-            rank: 0,
-          };
-          return player;
+        // 3. Process all solves to aggregate data per team
+        const teamSolveInfo = new Map<number, TeamSolveInfo>();
+        allSolves.forEach(solve => {
+            const teamId = solve.team.id;
+            const existingInfo = teamSolveInfo.get(teamId) || { solveCount: 0, lastSolvedTime: '' };
+            
+            const newInfo = {
+                solveCount: existingInfo.solveCount + 1,
+                // Update last solved time if the current solve is more recent
+                lastSolvedTime: !existingInfo.lastSolvedTime || new Date(solve.time) > new Date(existingInfo.lastSolvedTime)
+                    ? solve.time
+                    : existingInfo.lastSolvedTime
+            };
+
+            teamSolveInfo.set(teamId, newInfo);
         });
 
-        // This simplifies the logic significantly by removing the second loop of fetches
-        const resolvedPlayers = (await Promise.all(playerPromises))
-            .filter((p): p is Player => p !== null)
-            .sort((a, b) => b.totalPoints - a.totalPoints)
-            .map((player, index) => ({ ...player, rank: index + 1 }));
+        // 4. Construct the final player list with aggregated data
+        const resolvedPlayers = (teamsData.teams || [])
+          .map((team: ApiTeam) => {
+            const info = teamSolveInfo.get(team.id);
+            return {
+              name: team.name,
+              totalPoints: team.points,
+              totalFlagged: info?.solveCount || 0,
+              lastSolved: info?.lastSolvedTime 
+                ? new Date(info.lastSolvedTime).toLocaleString() 
+                : "N/A",
+              rank: 0, // Rank will be assigned after sorting
+            };
+          })
+          .sort((a, b) => b.totalPoints - a.totalPoints || (b.totalFlagged - a.totalFlagged))
+          .map((player, index) => ({ ...player, rank: index + 1 }));
 
         setPlayers(resolvedPlayers);
       } catch (err) {
@@ -100,11 +132,11 @@ const Scoreboard: React.FC = () => {
   };
 
   const filteredPlayers = players.filter((player) => {
-    const nameMatch = (player.name ?? "").toLowerCase().includes(searchQuery.toLowerCase());
+    const nameMatch = player.name.toLowerCase().includes(searchQuery.toLowerCase());
     const filterMatch =
       filter === "All" ||
-      (filter === "Solo" && (player.name ?? "").toLowerCase().includes("solo")) ||
-      (filter === "Teams" && !(player.name ?? "").toLowerCase().includes("solo"));
+      (filter === "Solo" && player.name.toLowerCase().includes("solo")) ||
+      (filter === "Teams" && !player.name.toLowerCase().includes("solo"));
     return nameMatch && filterMatch;
   });
 
@@ -112,7 +144,7 @@ const Scoreboard: React.FC = () => {
     <div className="bg-[#221633] min-h-screen text-white font-sans">
       <div className="flex justify-center pt-10 pb-5">
         <h1 className="text-5xl md:text-6xl font-bold text-[#29C48E]" style={{ fontFamily: "'Jaini Purva', cursive" }}>
-            🏆 Scoreboard
+          🏆 Scoreboard
         </h1>
       </div>
 
@@ -133,7 +165,7 @@ const Scoreboard: React.FC = () => {
   );
 };
 
-// The rest of the components (SearchFilterBar, ScoreboardTable) remain the same...
+// The SearchFilterBar
 
 interface SearchFilterBarProps {
   onSearch: (searchQuery: string, filter: FilterType) => void;
