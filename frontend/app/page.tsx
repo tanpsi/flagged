@@ -1,8 +1,12 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
 import ParticlesBackground from "./components/ParticlesBackground"; // your blend component
 import logo from "../public/logo.png"; // use updated image if needed
 import { Limelight } from 'next/font/google';
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 const limelight = Limelight({
   subsets: ['latin'],
@@ -21,6 +25,22 @@ const goldman = Goldman({
 
 
 export default function Home() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const router = useRouter();
+ useEffect(() => {
+    const token = localStorage.getItem("token");
+    setIsLoggedIn(!!token);
+    
+    // Optional: Listen to "storage" event when logout triggers it
+    const handleStorage = () => {
+      const t = localStorage.getItem("token");
+      setIsLoggedIn(!!t);
+    };
+    window.addEventListener("storage", handleStorage);
+
+    return () => window.removeEventListener("storage", handleStorage);
+  }, []);
+
   return (
     <div className="min-h-screen bg-[#221633] text-white flex flex-col items-center justify-center px-4">
       <div className="flex flex-col items-center text-center space-y-10`">
@@ -52,12 +72,15 @@ export default function Home() {
           >
             Start Hacking
           </Link>
-          <Link
-            href="/login"
-            className="border-2 border-blue-400 text-blue-400 px-6 py-3 rounded-full font-semibold hover:bg-blue-400 hover:text-white transition-all"
-          >
-            Login
-          </Link>
+          {!isLoggedIn && (
+  <Link
+    href="/login"
+    className="border-2 border-blue-400 text-blue-400 px-6 py-3 rounded-full font-semibold hover:bg-blue-400 hover:text-white transition-all"
+  >
+    Login
+  </Link>
+)}
+
         </div>
       </div>
     </div>
