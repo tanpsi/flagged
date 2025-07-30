@@ -2,14 +2,15 @@ import time
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
-# ✨ IMPORT NoResultFound
 from sqlalchemy.exc import NoResultFound
 
 import app.db.models as db
-# ✨ IMPORT NotificationUpdate
-from app.models.notification import NotificationReg, NotificationUpdate, NotificationList
+from app.models.notification import (
+    NotificationReg,
+    NotificationUpdate,
+    NotificationList,
+)
 from app.auth import verify_token
-# ✨ IMPORT THE NEW LOGIC FUNCTIONS
 from app.notification import (
     create_notification,
     get_all_notifications,
@@ -21,6 +22,7 @@ router = APIRouter(
     prefix="/notifications",
     tags=["notifications"],
 )
+
 
 @router.post("/add")
 async def add_notification(
@@ -35,11 +37,12 @@ async def add_notification(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User unauthorized for this action",
         )
-    
+
     notification_data.timestamp = int(time.time())
 
     await create_notification(notification_data)
     return {"message": "Notification created"}
+
 
 @router.get("/")
 async def get_notifications() -> NotificationList:
@@ -49,7 +52,7 @@ async def get_notifications() -> NotificationList:
     notifications = await get_all_notifications()
     return NotificationList(notifications=notifications)
 
-# ✨ ADD THIS ENDPOINT TO UPDATE A NOTIFICATION
+
 @router.put("/{notification_id}/update")
 async def change_notification_details(
     notification_id: int,
@@ -73,7 +76,7 @@ async def change_notification_details(
         )
     return {"message": "Notification updated"}
 
-# ✨ ADD THIS ENDPOINT TO DELETE A NOTIFICATION
+
 @router.delete("/{notification_id}/delete")
 async def remove_notification(
     notification_id: int, user: Annotated[db.User, Depends(verify_token)]

@@ -36,6 +36,18 @@ async def create_user(user: UserReg, admin: bool = False) -> bool:
     return True
 
 
+async def delete_user(user_id: int) -> bool:
+    async with session_genr() as session:
+        async with session.begin():
+            user = await session.get(UserDB, user_id)
+            if not user:
+                return False
+            if user.team_id:
+                return False
+            await session.delete(user)
+    return True
+
+
 async def update_user(user_id: int, details: UserUpdateInternal) -> bool:
     async with session_genr() as session:
         try:

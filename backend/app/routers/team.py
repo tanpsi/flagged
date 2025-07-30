@@ -8,7 +8,9 @@ from app.db.models import User as UserDB
 from app.auth import verify_token
 from app.team import (
     create_team,
+    delete_team,
     add_user_to_team,
+    unlink_user_from_team,
     get_team_pub,
     get_team_pub_list,
     get_team,
@@ -58,6 +60,43 @@ async def change_team_details(
     except NoResultFound:
         raise RuntimeError("Team id no corresponding to a team")
 
+@router.put("/update/{team_id}")
+async def change_other_team_details(
+    user: Annotated[UserDB, Depends(verify_token)], new_details: TeamUpdate, team_id: int
+):
+    if not user.admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only admins allowed")
+    try:
+        if await update_team(team_id, new_details):
+            return {"message": "Team updated"}
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Team name already in use",
+            )
+    except NoResultFound:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Team id no corresponding to a team")
+
+
+@router.delete("/delete")
+async def delete_your_team(user: Annotated[UserDB, Depends(verify_token)]):
+    if not user.team_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not in a team"
+        )
+    await delete_team(user.team_id)
+    return {"message": "Team deleted"}
+
+@router.delete("/delete/{team_id}")
+async def delete_other_team(user: Annotated[UserDB, Depends(verify_token)], team_id: int):
+    if not user.admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only admins allowed")
+    if not await delete_team(team_id):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Team id no corresponding to a team"
+        )
+    return {"message": "Team deleted"}
+
 
 @router.put("/join")
 async def join_team(user: Annotated[UserDB, Depends(verify_token)], team: TeamJoinReq):
@@ -71,6 +110,30 @@ async def join_team(user: Annotated[UserDB, Depends(verify_token)], team: TeamJo
     except NoResultFound:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail="User already in a team"
+        )
+
+
+@router.put("/leave")
+async def leave_team(user: Annotated[UserDB, Depends(verify_token)]):
+    if await unlink_user_from_team(user.id):
+        return {"message": "Team left"}
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not in team or only user in team",
+        )
+
+
+@router.put("/remove/{user_id}")
+async def remove_user_from_team(
+    user: Annotated[UserDB, Depends(verify_token)], user_id: int
+):
+    if await unlink_user_from_team(user_id, user.id):
+        return {"message": "User removed from team"}
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not in team or only user in team or you not in user's team",
         )
 
 

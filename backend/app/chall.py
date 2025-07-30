@@ -32,16 +32,18 @@ from app.config import FILE_STORE_DIR, FILE_BUFF_SIZE
 
 
 async def init():
-    global files_dir
+    global files_dir, files_dir_name
     if not FILE_STORE_DIR:
         files_dir = await aiofiles.tempfile.TemporaryDirectory()
+        files_dir_name = files_dir.name  # type: ignore
     else:
-        files_dir = FILE_STORE_DIR
+        files_dir = None
+        files_dir_name = FILE_STORE_DIR
 
 
 async def cleanup():
     if isinstance(files_dir, tempfile.TemporaryDirectory):
-        await files_dir.cleanup()
+        await files_dir.cleanup()  # type: ignore
 
 
 async def create_chall(chall: ChallReg) -> None:
@@ -81,7 +83,7 @@ async def create_file(chall_id: int, file: UploadFile) -> bool:
     name = file.filename
     sha256 = hashlib.sha256()
     async with aiofiles.tempfile.NamedTemporaryFile(
-        dir=files_dir.name, suffix=".tmp", delete=False
+        dir=files_dir_name, suffix=".tmp", delete=False
     ) as out:
         tmp_name = out.name
         while True:
@@ -92,7 +94,7 @@ async def create_file(chall_id: int, file: UploadFile) -> bool:
             await out.write(data)
     digest = sha256.hexdigest()
     try:
-        os.rename(str(tmp_name), os.path.join(files_dir.name, digest))
+        os.rename(str(tmp_name), os.path.join(files_dir_name, digest))
     except OSError:
         # The file already exists, no issues!
         print("rename failed")  # remove after testing
@@ -144,7 +146,7 @@ async def delete_file(file_id: int):
                 if not file:
                     raise NoResultFound
                 try:
-                    os.unlink(os.path.join(files_dir.name, file.path))
+                    os.unlink(os.path.join(files_dir_name, file.path))
                 except FileNotFoundError:
                     pass
                 await session.delete(file)
@@ -236,7 +238,7 @@ async def get_file(file_id: int) -> FileResponse | Literal[False]:
         file = await session.get(FileDB, file_id)
         if not file:
             return False
-        print(os.path.join(files_dir.name, file.path), file.name)
+        print(os.path.join(files_dir_name, file.path), file.name)
         return FileResponse(
-            path=os.path.join(files_dir.name, file.path), filename=file.name
+            path=os.path.join(files_dir_name, file.path), filename=file.name
         )

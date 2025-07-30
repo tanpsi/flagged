@@ -89,6 +89,7 @@ class Solve(Base):
         UniqueConstraint("team_id", "chall_id", name="solve_team_chall_uniq"),
     )
 
+
 class Notification(Base):
     __tablename__ = "notifications"
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)

@@ -17,6 +17,7 @@ from app.db.models import User as UserDB
 from app.auth import verify_token
 from app.user import (
     create_user,
+    delete_user,
     get_user_pub,
     get_user_pub_list,
     get_user,
@@ -42,6 +43,32 @@ async def add_user(user: UserReg, bg_tasks: BackgroundTasks) -> UserRegResp:
     )
 
 
+@router.delete("/delete")
+async def remove_user(user: Annotated[UserDB, Depends(verify_token)]):
+    if await delete_user(user.id):
+        return {"message": "User deleted"}
+    raise HTTPException(
+        status_code=status.HTTP_409_CONFLICT,
+        detail="User in a team",
+    )
+
+
+@router.delete("/delete/{user_id}")
+async def remove_other_user(
+    user: Annotated[UserDB, Depends(verify_token)], user_id: int
+):
+    if not user.admin:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Only admin allowed"
+        )
+    if await delete_user(user.id):
+        return {"message": "User deleted"}
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="User not exist or user in a team",
+    )
+
+
 @router.put("/update")
 async def change_user_details(
     user: Annotated[UserDB, Depends(verify_token)], new_details: UserUpdate
@@ -56,6 +83,30 @@ async def change_user_details(
             )
     except NoResultFound:
         raise RuntimeError("Logged user's id not corresponding to a user")
+
+
+@router.put("/update/{user_id}")
+async def change_other_user_details(
+    user: Annotated[UserDB, Depends(verify_token)],
+    new_details: UserUpdateInternal,
+    user_id: int,
+):
+    if not user.admin:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Only admin allowed"
+        )
+    try:
+        if await update_user(user_id, new_details):
+            return {"message": "User updated"}
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Username or email already in use or",
+            )
+    except NoResultFound:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="user_id not available"
+        )
 
 
 @router.get("/email/verify")

@@ -31,11 +31,23 @@ async def create_team(user_id: int, team_details: TeamReg) -> bool:
                     raise NoResultFound
                 if not await user.awaitable_attrs.team:
                     (await team.awaitable_attrs.users).append(user)
-                    print("HERE!")
                 else:
                     raise ZeroDivisionError
         except IntegrityError:
             return False
+    return True
+
+
+async def delete_team(team_id: int) -> bool:
+    async with session_genr() as session:
+        async with session.begin():
+            team = await session.get(TeamDB, team_id)
+            if not team:
+                return False
+            for solve in await team.awaitable_attrs.solves:
+                await session.delete(solve)
+            for user in await team.awaitable_attrs.users:
+                user.team_id = None
     return True
 
 
@@ -89,6 +101,30 @@ async def add_user_to_team(
             return False
         except ZeroDivisionError:
             raise NoResultFound
+    return True
+
+
+async def unlink_user_from_team(
+    user_id: int, caller_user_id: int | None = None
+) -> bool:
+    async with session_genr() as session:
+        async with session.begin():
+            user = await session.get(UserDB, user_id)
+            if not user:
+                return False
+            if not user.team_id:
+                return False
+            if len(await (await user.awaitable_attrs.team).awaitable_attrs.users) == 1:  # type: ignore
+                return False
+            if caller_user_id:
+                caller_user = await session.get(UserDB, user_id)
+                if not caller_user:
+                    return False
+                if caller_user.team_id != user.team_id:
+                    return False
+            for solve in await user.awaitable_attrs.solves:
+                await session.delete(solve)
+            user.team_id = None
     return True
 
 
