@@ -32,27 +32,52 @@ export default function Register() {
     }
 
     try {
-      const response = await fetch("http://127.0.0.1:8000/user/add", {
+      // 1. Register user
+      const res1 = await fetch("http://localhost:8000/user/add", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, email, password }),
       });
 
-      if (!response.ok) {
-        const data = await response.json();
+      if (!res1.ok) {
+        const data = await res1.json();
         throw new Error(data.detail || "Registration failed");
       }
 
-      setSuccess("Registration successful! Redirecting to login...");
-      setUsername("");
-      setEmail("");
-      setPassword("");
-      setConfirmPassword("");
+      // 2. Login to get token
+      const res2 = await fetch("http://localhost:8000/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: new URLSearchParams({
+          username,
+          password,
+        }),
+      });
 
-      // ⏳ Delay 2s then redirect to /login
-      setTimeout(() => {
-        router.push("/login");
-      }, 2000);
+
+      const loginData = await res2.json();
+      if (!res2.ok) throw new Error(loginData.detail || "Login failed");
+
+      const token = loginData.access_token;
+
+      // 3. Send verification email
+      const res3 = await fetch("http://localhost:8000/user/email/send", {
+        method: "GET", // ✅ change POST to GET
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+
+      if (!res3.ok) {
+        const data = await res3.json();
+        throw new Error(data.detail || "Email send failed");
+      }
+
+      // ✅ Redirect to email-verify page
+      router.push("/email-verify");
     } catch (err: any) {
       setError(err.message || "Registration failed. Try again.");
     }
