@@ -61,7 +61,7 @@ async def remove_other_user(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Only admin allowed"
         )
-    if await delete_user(user.id):
+    if await delete_user(user_id):
         return {"message": "User deleted"}
     raise HTTPException(
         status_code=status.HTTP_403_FORBIDDEN,
