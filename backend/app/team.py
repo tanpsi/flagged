@@ -44,12 +44,19 @@ async def delete_team(team_id: int) -> bool:
             team = await session.get(TeamDB, team_id)
             if not team:
                 return False
+
+            # Delete all solves associated with the team
             for solve in await team.awaitable_attrs.solves:
                 await session.delete(solve)
+
+            # Disassociate all users from the team
             for user in await team.awaitable_attrs.users:
                 user.team_id = None
-    return True
 
+            # --- ADD THIS LINE TO DELETE THE TEAM RECORD ITSELF ---
+            await session.delete(team)
+
+    return True
 
 async def update_team(team_id: int, details: TeamUpdate) -> bool:
     async with session_genr() as session:
