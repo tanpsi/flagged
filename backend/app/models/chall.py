@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated,Optional
 from datetime import datetime
 
 from pydantic import BaseModel, StringConstraints
@@ -49,7 +49,7 @@ class Chall(BaseModel):
     name: str
     desc: str
     points: int
-    flag_hash: str
+    flag_hash: Optional[str]
     solved_cnt: int
     files: list[FileForChall]
 
