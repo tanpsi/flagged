@@ -1,8 +1,12 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile
+from pydantic import BaseModel, StringConstraints
 from sqlalchemy.exc import NoResultFound
-from pydantic import StringConstraints
+
+# --- New Imports for Rate Limiting ---
+from fastapi_limiter.depends import RateLimiter
+# ------------------------------------
 
 import app.db.models as db
 from app.models.chall import ChallReg, ChallUpdate, ChallSolves, Chall, ChallList
@@ -22,8 +26,14 @@ from app.chall import (
 )
 from app.config import FILE_NAME_MAX_LEN, FLAG_MAX_LEN
 
+# --- New Pydantic model for secure flag submission ---
+class FlagSubmission(BaseModel):
+    flag: Annotated[str, StringConstraints(min_length=1, max_length=FLAG_MAX_LEN)]
+# ---------------------------------------------------
+
+
 router = APIRouter(
-    prefix="/chall",
+    prefix="/challs", # Corrected prefix from "/chall" to "/challs" to match frontend
     tags=["challenge"],
 )
 
@@ -41,7 +51,7 @@ async def add_chall(user: Annotated[db.User, Depends(verify_token)], chall: Chal
     return {"message": "Challenge created"}
 
 
-@router.put("s/{chall_id}/update")
+@router.put("/{chall_id}/update")
 async def change_chall_details(
     chall_id: int, user: Annotated[db.User, Depends(verify_token)], chall: ChallUpdate
 ):
@@ -60,7 +70,7 @@ async def change_chall_details(
     return {"message": "Challenge updated"}
 
 
-@router.delete("s/{chall_id}/delete")
+@router.delete("/{chall_id}/delete")
 async def remove_chall(user: Annotated[db.User, Depends(verify_token)], chall_id: int):
     if not user.admin:
         raise HTTPException(
@@ -77,7 +87,7 @@ async def remove_chall(user: Annotated[db.User, Depends(verify_token)], chall_id
     return {"message": "Challenge deleted"}
 
 
-@router.post("s/{chall_id}/file/add")
+@router.post("/{chall_id}/file/add")
 async def add_file(
     chall_id: int,
     user: Annotated[db.User, Depends(verify_token)],
@@ -101,7 +111,7 @@ async def add_file(
     return {"message": "File added"}
 
 
-@router.post("s/{chall_id}/file/{file_id}/delete")
+@router.post("/{chall_id}/file/{file_id}/delete")
 async def remove_file(
     user: Annotated[db.User, Depends(verify_token)], chall_id: int, file_id: int
 ):
@@ -120,32 +130,43 @@ async def remove_file(
     return {"message": "File deleted"}
 
 
-@router.get("s/{chall_id}/file/{file_id}")
+@router.get("/{chall_id}/file/{file_id}")
 async def get_file_of_chall(chall_id: int, file_id: int):
     resp = await get_file(file_id)
     if not resp:
-        return HTTPException(
+        raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="File not found"
         )
     return resp
 
 
-@router.post("s/{chall_id}/solve")
+@router.post(
+    "/{chall_id}/solve",
+    # --- New: Add server-side rate limiting dependency ---
+    dependencies=[Depends(RateLimiter(times=5, seconds=60))],
+    # ----------------------------------------------------
+)
 async def add_solve(
     user: Annotated[db.User, Depends(verify_token)],
     chall_id: int,
-    flag: Annotated[str, StringConstraints(min_length=1, max_length=FLAG_MAX_LEN)],
+    # --- Changed: Take the flag from the request body as a Pydantic model ---
+    submission: FlagSubmission,
+    # -----------------------------------------------------------------------
 ):
     if not user.team:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="User must be part of a team to solve a challenge",
         )
-    if not await verify_flag(chall_id, flag):
+    
+    # --- Changed: Use the flag from the submission model ---
+    if not await verify_flag(chall_id, submission.flag):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Flag does not match for challenge",
         )
+    # -----------------------------------------------------
+
     if not await create_solve(user.id, chall_id):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -154,12 +175,12 @@ async def add_solve(
     return {"message": "Challenge solved"}
 
 
-@router.get("s/")
+@router.get("/")
 async def get_list_of_challs() -> ChallList:
     return await get_chall_list()
 
 
-@router.get("s/{chall_id}")
+@router.get("/{chall_id}")
 async def get_chall_details(chall_id: int) -> Chall:
     try:
         return await get_chall(chall_id)
@@ -169,7 +190,7 @@ async def get_chall_details(chall_id: int) -> Chall:
         )
 
 
-@router.get("s/{chall_id}/solves")
+@router.get("/{chall_id}/solves")
 async def get_solves_of_chall(chall_id: int) -> ChallSolves:
     try:
         return await get_chall_solves(chall_id)
