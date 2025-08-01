@@ -136,7 +136,7 @@ export default function AdminDashboard() {
     if (!token) return
 
     try {
-      const res = await fetch('http://localhost:8000/chall/add', {
+      const res = await fetch('http://localhost:8000/challs/add', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
