@@ -7,7 +7,7 @@ import { Jersey_10 } from "next/font/google";
 
 const jersey = Jersey_10({
   subsets: ["latin"],
-  weight: "400", // Only one weight available
+  weight: "400",
   variable: "--font-jersey-10",
 });
 
@@ -16,7 +16,6 @@ interface Challenge {
   name: string
   desc: string
   points: number
-  flag_hash: string
   solved_cnt: number
   files: { id: number; name: string }[]
 }
@@ -29,13 +28,18 @@ export default function ChallengePage() {
   const [submitResult, setSubmitResult] = useState<{ success: boolean; message: string } | null>(null)
   const [authorized, setAuthorized] = useState(false)
   const [userTeam, setUserTeam] = useState<string | null>(null)
+  
+  const [submissionTimestamps, setSubmissionTimestamps] = useState<number[]>([]);
+  const MAX_SUBMISSIONS_PER_WINDOW = 1;
+  const TIME_WINDOW_MS = 1000;
 
   const router = useRouter()
 
   useEffect(() => {
     const token = localStorage.getItem('token')
     if (!token) {
-      router.push('/login')
+      router.push('/login');
+      setLoading(false);
     } else {
       setAuthorized(true)
       fetchUserData(token)
@@ -53,9 +57,15 @@ export default function ChallengePage() {
       if (response.ok) {
         const userData = await response.json()
         setUserTeam(userData.team_id ? 'has_team' : null)
+      } else {
+        console.error('Failed to fetch user data:', response.statusText);
+        localStorage.removeItem('token');
+        router.push('/login');
       }
     } catch (error) {
       console.error('Error fetching user data:', error)
+      localStorage.removeItem('token');
+      router.push('/login');
     }
   }
 
@@ -66,11 +76,19 @@ export default function ChallengePage() {
           Authorization: `Bearer ${token}`,
         },
       })
-      if (!response.ok) throw new Error('Failed to fetch challenges')
+      if (!response.ok) {
+        if (response.status === 401) {
+            console.error('Unauthorized to fetch challenges. Token might be expired.');
+            localStorage.removeItem('token');
+            router.push('/login');
+        }
+        throw new Error('Failed to fetch challenges');
+      }
       const data = await response.json()
       setChallenges(data.challs || [])
     } catch (error) {
       console.error('Error fetching challenges:', error)
+      setChallenges([]);
     }
   }
 
@@ -88,7 +106,14 @@ export default function ChallengePage() {
         },
       })
 
-      if (!response.ok) throw new Error('Failed to fetch challenge details')
+      if (!response.ok) {
+        if (response.status === 401) {
+            console.error('Unauthorized to fetch challenge details. Token might be expired.');
+            localStorage.removeItem('token');
+            router.push('/login');
+        }
+        throw new Error('Failed to fetch challenge details');
+      }
       const challengeData = await response.json()
       setOpenChallenge(challengeData)
       setFlag('')
@@ -100,6 +125,8 @@ export default function ChallengePage() {
         setOpenChallenge(challenge)
         setFlag('')
         setSubmitResult(null)
+      } else {
+        setSubmitResult({ success: false, message: 'Could not load challenge details.' });
       }
     }
   }
@@ -110,60 +137,87 @@ export default function ChallengePage() {
   }
 
   const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
+    e.preventDefault();
+    setLoading(true);
 
-    const token = localStorage.getItem('token')
+    const token = localStorage.getItem('token');
     if (!token || !openChallenge) {
-      router.push('/login')
-      return
+      router.push('/login');
+      setLoading(false);
+      return;
     }
 
     if (!userTeam) {
       setSubmitResult({
         success: false,
         message: 'You must be part of a team to solve challenges. Please join a team first.',
-      })
-      setLoading(false)
-      return
+      });
+      setLoading(false);
+      return;
     }
+
+    // --- Client-Side Rate Limiting Check ---
+    const now = Date.now();
+    const recentTimestamps = submissionTimestamps.filter(
+      (timestamp) => now - timestamp < TIME_WINDOW_MS
+    );
+
+    if (recentTimestamps.length >= MAX_SUBMISSIONS_PER_WINDOW) {
+      setSubmitResult({
+        success: false,
+        message: `Too many submissions! Please wait before trying again. (${MAX_SUBMISSIONS_PER_WINDOW} per ${TIME_WINDOW_MS / 1000} seconds)`,
+      });
+      setLoading(false);
+      return;
+    }
+
+    setSubmissionTimestamps([...recentTimestamps, now]);
+    // --- End Client-Side Rate Limiting Check ---
 
     try {
       const response = await fetch(
-        `http://localhost:8000/challs/${openChallenge.id}/solve?flag=${encodeURIComponent(flag.trim())}`,
+        `http://localhost:8000/challs/${openChallenge.id}/solve`, // The URL no longer includes the flag
         {
           method: 'POST',
           headers: {
+            'Content-Type': 'application/json', // Specify content type for JSON body
             Authorization: `Bearer ${token}`,
           },
+          body: JSON.stringify({ flag: flag.trim() }), // Send the flag in the request body
         }
-      )
+      );
 
-      const result = await response.json()
+      const result = await response.json();
       if (!response.ok) {
-        throw new Error(result.detail || result || 'Submission failed')
+        const errorMessage = result.detail || result.message || 'Submission failed';
+        throw new Error(errorMessage);
       }
 
-      setSubmitResult({ success: true, message: result.message || 'Flag correct!' })
-      await fetchChallenges(token)
+      setSubmitResult({ success: true, message: result.message || 'Flag correct!' });
+      await fetchChallenges(token);
 
       setTimeout(() => {
-        handleClose()
-      }, 2000)
+        handleClose();
+      }, 2000);
+
     } catch (error: any) {
-      console.error('Error submitting flag:', error)
+      console.error('Error submitting flag to server:', error);
       setSubmitResult({
         success: false,
         message: error.message || 'Failed to submit flag. Please try again.',
-      })
+      });
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
+
 
   const handleFileDownload = async (challId: number, fileId: number, fileName: string) => {
     const token = localStorage.getItem('token')
-    if (!token) return
+    if (!token) {
+        router.push('/login');
+        return;
+    }
 
     try {
       const response = await fetch(`http://localhost:8000/challs/${challId}/file/${fileId}`, {
@@ -182,9 +236,18 @@ export default function ChallengePage() {
         a.click()
         window.URL.revokeObjectURL(url)
         document.body.removeChild(a)
+      } else {
+        if (response.status === 401) {
+            console.error('Unauthorized to download file. Token might be expired.');
+            localStorage.removeItem('token');
+            router.push('/login');
+        }
+        console.error('Failed to download file:', response.statusText);
+        setSubmitResult({ success: false, message: `Failed to download ${fileName}.` });
       }
     } catch (error) {
       console.error('Error downloading file:', error)
+      setSubmitResult({ success: false, message: `Error downloading ${fileName}.` });
     }
   }
 
@@ -196,14 +259,26 @@ export default function ChallengePage() {
     )
   }
 
-  // ✅ Group challenges by category
   const grouped = challenges.reduce((acc: Record<string, Challenge[]>, chall) => {
-    const [category, title] = chall.name.split('/')
-    const cleanChallenge = { ...chall, name: title || chall.name }
-    if (!acc[category]) acc[category] = []
-    acc[category].push(cleanChallenge)
-    return acc
-  }, {})
+    const parts = chall.name.split('/');
+    let category: string;
+    let title: string;
+
+    if (parts.length > 1) {
+        category = parts[0].trim();
+        title = parts.slice(1).join('/').trim();
+    } else {
+      category = 'Uncategorized';
+      title = chall.name.trim();
+    }
+    
+    const cleanChallenge = { ...chall, name: title || chall.name };
+
+    if (!acc[category]) acc[category] = [];
+    acc[category].push(cleanChallenge);
+    return acc;
+  }, {});
+
 
   return (
     <div className="flex flex-col min-h-screen bg-[#221633] text-white">
@@ -224,7 +299,7 @@ export default function ChallengePage() {
           <div key={category} className="ml-2 mb-12 font-['Jersey_10']">
             <div className={jersey.variable}>
               <h2 className="text-3xl font-bold ml-5 mb-4 uppercase font-jersey tracking-widest text-lime-400">{category}</h2>
-              </div>
+            </div>
             <div className="grid grid-cols-2 font-['Outfit'] sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
               {challs.map(challenge => (
                 <button
@@ -265,20 +340,22 @@ export default function ChallengePage() {
               &times;
             </button>
 
-            {/* Extract category and title from name */}
             {(() => {
-              const [category, title] = openChallenge.name.includes('/')
+              const parts = openChallenge.name.includes('/')
                 ? openChallenge.name.split('/')
-                : ['General', openChallenge.name]
+                : ['General', openChallenge.name];
+
+              const category = parts[0].trim();
+              const title = parts.slice(1).join('/').trim();
+
               return (
                 <>
                  <h4
-  className="text-xl text-[#289ac4] font-['Jaini_Purva'] font-extrabold  uppercase tracking-widest mt-1 mb-2"
->
-  {category}
-</h4>
-
-                  <h3 className="text-xl font-bold mb-2 text-[#df9960]">{title}</h3>
+                  className="text-xl text-[#289ac4] font-['Jaini_Purva'] font-extrabold uppercase tracking-widest mt-1 mb-2"
+                 >
+                   {category}
+                 </h4>
+                 <h3 className="text-xl font-bold mb-2 text-[#df9960]">{title}</h3>
                 </>
               )
             })()}
@@ -328,13 +405,13 @@ export default function ChallengePage() {
                 value={flag}
                 onChange={e => setFlag(e.target.value)}
                 required
-                disabled={!userTeam}
+                disabled={!userTeam || loading} 
                 className="w-full px-4 py-2 border rounded focus:outline-none focus:ring text-black disabled:bg-gray-200"
               />
 
               <button
                 type="submit"
-                disabled={loading || !userTeam}
+                disabled={loading || !userTeam} 
                 className={`w-full ${
                   loading || !userTeam ? 'bg-gray-400' : 'bg-[#ff4e00]'
                 } text-white px-4 py-2 rounded hover:bg-orange-600 transition disabled:cursor-not-allowed`}
