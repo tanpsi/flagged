@@ -201,7 +201,11 @@ async def get_chall_from_obj(chall: ChallDB) -> Chall:
         name=chall.name,
         desc=chall.desc,
         points=chall.points,
-        flag_hash=hashing.hash(chall.flag),
+        # --- CRITICAL CHANGE: Stop sending the flag hash to the frontend ---
+        # The 'flag_hash' field is part of the Chall model but should be None
+        # to prevent exposing the flag solution.
+        flag_hash=None,
+        # -----------------------------------------------------------------
         solved_cnt=len(await chall.awaitable_attrs.solves),
         files=await get_chall_files(chall),
     )
