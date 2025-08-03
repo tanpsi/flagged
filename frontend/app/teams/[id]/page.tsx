@@ -66,11 +66,14 @@ export default function TeamDetailsPage() {
           })) || []
         );
         setSolves(
-          data.solves?.map((s: any) => ({
-            challenge: s.name,
-            category: s.category || "N/A",
-            points: s.points || 0,
-          })) || []
+          data.solves?.map((s: any) => {
+        const [category, challenge] = s.name.split("/");
+        return {
+          challenge: challenge || s.name,
+          category: category || "N/A",
+          points: s.points || 0,
+        };
+      }) || []
         );
       } catch (err: any) {
         setError(err.message || "Error loading team");
