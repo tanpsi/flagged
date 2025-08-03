@@ -98,11 +98,14 @@ export default function TeamPage() {
         })) || []
       );
       setSolves(
-        data.solves?.map((s: any) => ({
-          challenge: s.name,
-          category: s.category || "N/A",
+        data.solves?.map((s: any) => {
+          const[Category,challenge]=s.name.split("/");
+          return{
+          challenge: challenge||s.name,
+          category: Category || "N/A",
           points: s.points || 0,
-        })) || []
+          };
+        }) || []
       );
       return true;
     } catch (err) {
