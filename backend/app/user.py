@@ -1,6 +1,6 @@
 import time
 
-from sqlalchemy import select
+from sqlalchemy import select ,func
 from sqlalchemy.exc import NoResultFound, IntegrityError
 
 from app.models.user import (
@@ -35,17 +35,25 @@ async def create_user(user: UserReg, admin: bool = False) -> bool:
             return False
     return True
 
-
 async def delete_user(user_id: int) -> bool:
     async with session_genr() as session:
         async with session.begin():
             user = await session.get(UserDB, user_id)
             if not user:
                 return False
+            
             if user.team_id:
-                return False
+                # Count team members
+                member_count = await session.scalar(
+                    select(func.count()).where(UserDB.team_id == user.team_id)
+                )
+                if member_count == 1:
+                    # Only one user in team, so restrict deletion
+                    return False
+
             await session.delete(user)
     return True
+
 
 
 async def update_user(user_id: int, details: UserUpdateInternal) -> bool:
@@ -141,7 +149,9 @@ async def get_user_pub_list() -> UserPubList:
         return UserPubList(
             users=[
                 await get_user_for_pub_list(user)
-                for user in await session.scalars(select(UserDB))
+                for user in await session.scalars(
+                    select(UserDB).where(UserDB.admin == False)
+                )
             ]
         )
 
@@ -161,7 +171,7 @@ async def get_user_pub(user_id: int) -> UserPub:
         return await get_user_pub_from_obj(user)
 
 
-async def get_user(user_id: int) -> User:
+async def get_user(user_id: int) -> UserPub:
     async with session_genr() as session:
         user = await session.get(UserDB, user_id)
         if not user:
