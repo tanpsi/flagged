@@ -2,6 +2,7 @@ import time
 
 from sqlalchemy import select ,func
 from sqlalchemy.exc import NoResultFound, IntegrityError
+from app.db.models import Solve as SolveDB
 
 from app.models.user import (
     UserReg,
@@ -43,14 +44,21 @@ async def delete_user(user_id: int) -> bool:
                 return False
             
             if user.team_id:
-                # Count team members
                 member_count = await session.scalar(
                     select(func.count()).where(UserDB.team_id == user.team_id)
                 )
                 if member_count == 1:
-                    # Only one user in team, so restrict deletion
+                    # Only one member in the team, prevent deletion
                     return False
-
+            
+            # Delete all solves of the user
+            solves = await session.scalars(
+                select(SolveDB).where(SolveDB.user_id == user_id)
+            )
+            for solve in solves:
+                await session.delete(solve)
+            
+            # Finally, delete the user
             await session.delete(user)
     return True
 
