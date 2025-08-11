@@ -1,11 +1,13 @@
+// File: app/users/page.tsx
+
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { useRouter } from 'next/navigation'; // ✅ 1. Import the useRouter hook
-import { Jersey_10, Jaini_Purva, Outfit } from "next/font/google";
+import { useRouter } from 'next/navigation';
+// --- FIX: Removed 'Jaini_Purva' as it was unused ---
+import { Jersey_10, Outfit } from "next/font/google";
 
 const jersey = Jersey_10({ subsets: ["latin"], weight: "400", variable: "--font-jersey-10" });
-const jainiPurva = Jaini_Purva({ subsets: ["latin"], weight: "400", variable: "--font-jaini-purva" });
 const outfit = Outfit({ subsets: ["latin"], variable: "--font-outfit" });
 
 interface User {
@@ -18,25 +20,29 @@ interface User {
 }
 
 export default function UsersPage() {
-  const router = useRouter(); // ✅ 2. Initialize the router
+  const router = useRouter();
   const [users, setUsers] = useState<User[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterBy, setFilterBy] = useState<"name" | "affiliation" | "country">("name");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  
+
   const API_BASE = "http://127.0.0.1:8000";
 
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        // Using your backend endpoint to get the list of all users
         const res = await fetch(`${API_BASE}/users`);
         if (!res.ok) throw new Error("Failed to fetch users");
         const data = await res.json();
         setUsers(data.users || []);
-      } catch (err: any) {
-        setError(err.message || "Error fetching users");
+      } catch (err) {
+        // --- FIX: Typed the error properly instead of using 'any' ---
+        if (err instanceof Error) {
+          setError(err.message);
+        } else {
+          setError("An unknown error occurred while fetching users");
+        }
       } finally {
         setLoading(false);
       }
@@ -48,12 +54,11 @@ export default function UsersPage() {
   const filteredUsers = users.filter((user) => {
     const field =
       filterBy === "name" ? user.name :
-      filterBy === "affiliation" ? user?.affiliation ?? "" :
-      user?.country ?? "";
+        filterBy === "affiliation" ? user?.affiliation ?? "" :
+          user?.country ?? "";
     return field.toLowerCase().includes(searchTerm.toLowerCase());
   });
 
-  // Function to handle navigation when a row is clicked
   const handleRowClick = (userId: number) => {
     router.push(`/users/${userId}`);
   };
@@ -66,7 +71,6 @@ export default function UsersPage() {
         </h1>
       </div>
 
-      {/* Search and Filter */}
       <div className="flex justify-center items-center gap-2 mb-8 flex-wrap">
         <div className={outfit.variable}>
           <select
@@ -93,7 +97,6 @@ export default function UsersPage() {
         />
       </div>
 
-      {/* Table */}
       {loading ? (
         <p className="text-center text-gray-400">Loading users...</p>
       ) : error ? (
@@ -110,7 +113,6 @@ export default function UsersPage() {
             </thead>
             <tbody>
               {filteredUsers.map((user) => (
-                // ✅ 3. Add onClick handler and cursor-pointer for better UX
                 <tr
                   key={user.id}
                   className="hover:bg-[#3a2c52] rounded-xl transition-all cursor-pointer"
