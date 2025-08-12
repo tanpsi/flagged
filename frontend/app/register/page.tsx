@@ -61,6 +61,7 @@ export default function Register() {
       if (!res2.ok) throw new Error(loginData.detail || "Login failed");
 
       const token = loginData.access_token;
+      localStorage.setItem("token", token);
 
       // 3. Send verification email
       const res3 = await fetch("http://localhost:8000/user/email/send", {
