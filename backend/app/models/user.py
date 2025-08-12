@@ -30,8 +30,8 @@ class UserUpdate(BaseModel):
 
 
 class UserUpdateInternal(UserUpdate):
-    admin: Optional[bool] | None
-    email_verified: Optional[bool] | None
+    admin: Optional[bool] = None
+    email_verified: Optional[bool] = None
 
 
 class UserPubForList(BaseModel):
