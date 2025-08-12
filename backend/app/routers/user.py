@@ -143,6 +143,8 @@ async def change_other_user_details(
         )
 
 
+from fastapi.responses import JSONResponse
+
 @router.get("/email/verify")
 async def verify_email_of_user(token: str):
     if not await verify_user_email_token(token):
@@ -150,7 +152,8 @@ async def verify_email_of_user(token: str):
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Email verify token invalid",
         )
-    return RedirectResponse(FRONTEND_BASE_URL)
+    # Return success JSON instead of redirect
+    return JSONResponse({"verified": True})
 
 
 @router.get("/email/send")
