@@ -65,8 +65,8 @@ Configure the backend at `backend/app/config.py`.
 ## Screenshots <a name="screenshots"></a>
 
 | Login Page | Dashboard | Scoreboard | AdminPanel |
-|------------|-----------|------------|
-| ![Login](gallery/Login.png) | ![Dashboard](gallery/dashboard.png) | ![Scoreboard](gallery/scoreboard.png) |  ![AdminPanel](gallery/AdminPanel.png) |
+|------------|-----------|------------|------------|
+| ![Login](gallery/Login.png) | ![Dashboard](gallery/dashboard.png) | ![Scoreboard](gallery/scoreboard.png) | ![AdminPanel](gallery/AdminPanel.png) |
 
 
 ## Future Improvements <a name="future-improvements"></a>
