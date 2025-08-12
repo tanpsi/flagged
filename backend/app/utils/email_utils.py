@@ -16,7 +16,7 @@ from app.config import (
     EMAIL_JWT_EXPIRY,
 )
 FRONTEND_URL='http://localhost:3000'
-VERIFY_URL = f"{BASE_URL}/email-token"
+VERIFY_URL = f"{FRONTEND_URL}/email-token"
 RESET_PASSWORD_URL = f"{FRONTEND_URL}/reset-password"  # Adjust path if needed
 
 
