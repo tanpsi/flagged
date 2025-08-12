@@ -1,82 +1,130 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import { Jaini_Purva } from 'next/font/google';
+import { Mail } from "lucide-react";
+import { Jaini_Purva } from "next/font/google";
 
 const jainiPurva = Jaini_Purva({
-  subsets: ['latin'],
-  weight: '400',
-  variable: '--font-jaini-purva',
+  subsets: ["latin"],
+  weight: "400",
+  variable: "--font-jaini-purva",
 });
 
-export default function ForgotPassword() {
-  const [email, setEmail] = useState("");
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
+const API_URL = "http://localhost:8000/";
 
-  const handleSubmit = async (e: React.FormEvent) => {
+export default function ForgotPasswordPage() {
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
+
+  const handleSendEmail = async (e: React.FormEvent) => {
     e.preventDefault();
-    setMessage("");
-    setError("");
+
+    if (!username.trim()) {
+      setMessage("❌ Please enter your username.");
+      return;
+    }
+
+    if (!email.trim()) {
+      setMessage("❌ Please enter your email address.");
+      return;
+    }
 
     try {
-      // Replace this with your actual FastAPI endpoint later
-      const response = await fetch("/api/forgot-password", {
+      setLoading(true);
+      setMessage("");
+
+      // Request password reset email by email only
+      const res = await fetch(`${API_URL}user/email/forgot-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       });
 
-      if (!response.ok) {
-        throw new Error("Request failed");
-      }
+      const data = await res.json();
 
-      setMessage("If this email is registered, you’ll receive reset instructions.");
-    } catch (err) {
-      setError("Something went wrong. Please try again.");
+      if (!res.ok) {
+        if (res.status === 404) {
+          setMessage(`❌ ${data.detail}`);
+        } else {
+          throw new Error(data.detail || "Failed to send email");
+        }
+      } else {
+        setMessage(
+          "📧 Email sent successfully! Please check your inbox for a reset link."
+        );
+
+        // Store username and email locally to be used on reset page
+        localStorage.setItem("reset_username", username.trim());
+        localStorage.setItem("reset_email", email.trim());
+
+        setUsername("");
+        setEmail("");
+      }
+    } catch (err: any) {
+      setMessage(`❌ Failed to send email. Please try again.`);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#221633] text-black dark:text-black">
+    <div className="min-h-screen flex items-center justify-center bg-[#221633] text-black">
       <div className="bg-white p-8 rounded-lg shadow-lg max-w-md w-full">
         <div className={jainiPurva.variable}>
           <h1 className="text-3xl font-bold mb-6 text-center text-orange-500 font-jaini tracking-wider">
+            <Mail className="inline-block mr-2" />
             Forgot your password?
           </h1>
         </div>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSendEmail} className="space-y-4">
           <div>
-            <label htmlFor="email" className="block text-sm font-medium mb-1">
-              Enter your email or username
+            <label htmlFor="username" className="block text-sm font-medium mb-1">
+              Enter your username
             </label>
             <input
-              suppressHydrationWarning
               type="text"
+              id="username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              className="w-full px-4 py-2 rounded-lg bg-gray-100 text-gray-900 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400"
+              required
+              suppressHydrationWarning
+            />
+          </div>
+          <div>
+            <label htmlFor="email" className="block text-sm font-medium mb-1">
+              Enter your email address
+            </label>
+            <input
+              type="email"
               id="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-400"
+              className="w-full px-4 py-2 rounded-lg bg-gray-100 text-gray-900 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400"
               required
+              suppressHydrationWarning
             />
           </div>
-          {message && <p className="text-green-500 text-sm">{message}</p>}
-          {error && <p className="text-red-500 text-sm">{error}</p>}
+          {message && (
+            <p
+              className={`text-sm ${
+                message.startsWith("❌") ? "text-red-500" : "text-green-500"
+              }`}
+            >
+              {message}
+            </p>
+          )}
           <button
-            suppressHydrationWarning
             type="submit"
-            className="w-full bg-blue-500 dark:bg-blue-600 px-6 py-3 rounded-lg font-semibold text-green-300 hover:bg-blue-700 dark:hover:bg-blue-700 transition-all duration-300"
+            disabled={loading}
+            className="w-full bg-blue-500 px-6 py-3 rounded-lg font-semibold text-green-300 hover:bg-blue-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+            suppressHydrationWarning
           >
-            Send Reset Link
+            {loading ? "Sending..." : "Send Reset Link"}
           </button>
         </form>
-        <p className="mt-4 text-center text-sm">
-          Remembered your password?{" "}
-          <Link href="/login" className="text-blue-400 hover:underline hover:text-blue-600">
-            Login
-          </Link>
-        </p>
       </div>
     </div>
   );
