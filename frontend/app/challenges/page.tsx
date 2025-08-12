@@ -37,15 +37,18 @@ export default function ChallengePage() {
 
   useEffect(() => {
     const token = localStorage.getItem('token')
-    if (!token) {
+    const loggedInManually = localStorage.getItem('loggedInManually')
+
+    if (!token || loggedInManually !== 'true') {
       router.push('/login');
       setLoading(false);
-    } else {
-      setAuthorized(true)
-      fetchUserData(token)
-      fetchChallenges(token)
+      return;
     }
-  }, [])
+
+    setAuthorized(true)
+    fetchUserData(token)
+    fetchChallenges(token)
+  }, [router])
 
   const fetchUserData = async (token: string) => {
     try {
@@ -60,11 +63,13 @@ export default function ChallengePage() {
       } else {
         console.error('Failed to fetch user data:', response.statusText);
         localStorage.removeItem('token');
+        localStorage.removeItem('loggedInManually');
         router.push('/login');
       }
     } catch (error) {
       console.error('Error fetching user data:', error)
       localStorage.removeItem('token');
+      localStorage.removeItem('loggedInManually');
       router.push('/login');
     }
   }
@@ -80,6 +85,7 @@ export default function ChallengePage() {
         if (response.status === 401) {
             console.error('Unauthorized to fetch challenges. Token might be expired.');
             localStorage.removeItem('token');
+            localStorage.removeItem('loggedInManually');
             router.push('/login');
         }
         throw new Error('Failed to fetch challenges');
@@ -110,6 +116,7 @@ export default function ChallengePage() {
         if (response.status === 401) {
             console.error('Unauthorized to fetch challenge details. Token might be expired.');
             localStorage.removeItem('token');
+            localStorage.removeItem('loggedInManually');
             router.push('/login');
         }
         throw new Error('Failed to fetch challenge details');
@@ -176,14 +183,14 @@ export default function ChallengePage() {
 
     try {
       const response = await fetch(
-        `http://localhost:8000/challs/${openChallenge.id}/solve`, // The URL no longer includes the flag
+        `http://localhost:8000/challs/${openChallenge.id}/solve`,
         {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json', // Specify content type for JSON body
+            'Content-Type': 'application/json',
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ flag: flag.trim() }), // Send the flag in the request body
+          body: JSON.stringify({ flag: flag.trim() }),
         }
       );
 
@@ -240,6 +247,7 @@ export default function ChallengePage() {
         if (response.status === 401) {
             console.error('Unauthorized to download file. Token might be expired.');
             localStorage.removeItem('token');
+            localStorage.removeItem('loggedInManually');
             router.push('/login');
         }
         console.error('Failed to download file:', response.statusText);
@@ -278,7 +286,6 @@ export default function ChallengePage() {
     acc[category].push(cleanChallenge);
     return acc;
   }, {});
-
 
   return (
     <div className="flex flex-col min-h-screen bg-[#221633] text-white">
@@ -405,13 +412,13 @@ export default function ChallengePage() {
                 value={flag}
                 onChange={e => setFlag(e.target.value)}
                 required
-                disabled={!userTeam || loading} 
+                disabled={!userTeam || loading}
                 className="w-full px-4 py-2 border rounded focus:outline-none focus:ring text-black disabled:bg-gray-200"
               />
 
               <button
                 type="submit"
-                disabled={loading || !userTeam} 
+                disabled={loading || !userTeam}
                 className={`w-full ${
                   loading || !userTeam ? 'bg-gray-400' : 'bg-[#ff4e00]'
                 } text-white px-4 py-2 rounded hover:bg-orange-600 transition disabled:cursor-not-allowed`}
