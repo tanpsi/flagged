@@ -81,12 +81,26 @@ Configure the backend at `backend/app/config.py`.
 
 ## Contributors <a name="contributors"></a>
 
-- Tanish Yadav
-- Akarsh Raj
-- Subhanshu Kumar
-- Vivek Sahu
-- Sumit Modanwal
-- Mohd Hassan Raza Ansari
+- ![Tanish Yadav](https://github.com/tanpsi) - 240041036
+  
+  Worked on FastAPI endpoints. Implemented backend authentication flow. Fixed multiple backend issues and implemented multiple DB operations.
+- ![Akarsh Raj](https://github.com/Akarsh-1A1) - 240051003
+
+  Frontend layout, theme, pages design, Created Login, Register, Home, Scoreboard, teams, Admin panel, Notifications pages. Set  Authentication flow, some  backend part, Integration of Admin controls, Scoreboard, Challenges, Teams, Profile, Notifications etc to backend.
+- ![Subhanshu Kumar](https://github.com/Subhansh-1-u) - 240021019
+
+  Pages design user, team, forget password, settings, flag submission logic (fast api rate limitter and redis implementation), some backend endpoints like reset password and send reset password email. Integration of settings, team, user, forget password etc to backend
+
+- ![Vivek Sahu](https://github.com/viveksahu15) - 240005051
+
+  Designed the challenge, profile, and settings pages, implemented them in code, and integrated the profile page with its respective backend endpoints, as well as integrated the challenge page with the backend.
+
+- ![Sumit Modanwal](https://github.com/sumitmodanwal962) - 240004049
+
+  Email verification
+- ![Mohd Hassan Raza Ansari](https://github.com/hr5116) - 240008019
+
+  Database models
 
 
 ## License <a name="license"></a>
