@@ -36,10 +36,16 @@ export default function Login() {
       if (!response.ok) throw new Error("Login failed");
 
       const data = await response.json();
-      localStorage.setItem("token", data.access_token);
-      window.dispatchEvent(new Event("storage"));
-      router.push("/");
 
+      // Store token
+      localStorage.setItem("token", data.access_token);
+
+      // Set flag to indicate manual login happened
+      localStorage.setItem("loggedInManually", "true");
+
+      window.dispatchEvent(new Event("storage")); // optional, for sync events if needed
+
+      router.push("/");
     } catch (err) {
       setError("Invalid username or password");
     }
@@ -60,6 +66,7 @@ export default function Login() {
               Username
             </label>
             <input
+            suppressHydrationWarning
               type="text"
               id="username"
               value={username}
@@ -81,6 +88,7 @@ export default function Login() {
               Password
             </label>
             <input
+            suppressHydrationWarning
               type={showPassword ? "text" : "password"}
               id="password"
               value={password}
@@ -114,6 +122,7 @@ export default function Login() {
           {error && <p className="text-red-500 text-sm">{error}</p>}
 
           <button
+          suppressHydrationWarning
             type="submit"
             className="w-full bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-lg font-semibold text-white transition-all duration-300"
           >
