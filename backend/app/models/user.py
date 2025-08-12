@@ -1,4 +1,4 @@
-from typing import Annotated, Literal
+from typing import Annotated, Literal,Optional
 
 from pydantic import BaseModel, StringConstraints, EmailStr
 
@@ -30,8 +30,8 @@ class UserUpdate(BaseModel):
 
 
 class UserUpdateInternal(UserUpdate):
-    admin: bool | None
-    email_verified: bool | None
+    admin: Optional[bool] | None
+    email_verified: Optional[bool] | None
 
 
 class UserPubForList(BaseModel):
