@@ -111,8 +111,18 @@ const Scoreboard: React.FC = () => {
               rank: 0, // Rank will be assigned after sorting
             };
           })
-          .sort((a, b) => b.totalPoints - a.totalPoints || (b.totalFlagged - a.totalFlagged))
-          .map((player, index) => ({ ...player, rank: index + 1 }));
+.sort((a, b) => {
+    if (b.totalPoints !== a.totalPoints) {
+        return b.totalPoints - a.totalPoints;
+    }
+    if (b.totalFlagged !== a.totalFlagged) {
+        return b.totalFlagged - a.totalFlagged;
+    }
+    // Earlier lastSolved should rank higher
+    const aTime = a.lastSolved === "N/A" ? Infinity : new Date(a.lastSolved).getTime();
+    const bTime = b.lastSolved === "N/A" ? Infinity : new Date(b.lastSolved).getTime();
+    return aTime - bTime;
+})          .map((player, index) => ({ ...player, rank: index + 1 }));
 
         setPlayers(resolvedPlayers);
       } catch (err) {
