@@ -15,30 +15,51 @@ export default function Navbar() {
   useEffect(() => {
     const checkLogin = async () => {
       const token = localStorage.getItem("token");
-      setLoggedIn(!!token);
+      const loggedInManually = localStorage.getItem("loggedInManually");
 
-      if (token) {
-        try {
-          const res = await fetch("http://localhost:8000/user/", {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          });
-          const data = await res.json();
-          setIsAdminUser(data.name === "admin");
-        } catch (err) {
-          console.error("Failed to verify user:", err);
-          setIsAdminUser(false);
-        }
-      } else {
+      if (!token || loggedInManually !== "true") {
+        setLoggedIn(false);
         setIsAdminUser(false);
+        return;
+      }
+
+      setLoggedIn(true);
+
+      try {
+        const res = await fetch("http://localhost:8000/user/", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!res.ok) {
+          // Token might be invalid/expired
+          setLoggedIn(false);
+          setIsAdminUser(false);
+          localStorage.removeItem("token");
+          localStorage.removeItem("loggedInManually");
+          router.push("/login");
+          return;
+        }
+
+        const data = await res.json();
+        setIsAdminUser(data.name === "admin");
+      } catch (err) {
+        console.error("Failed to verify user:", err);
+        setIsAdminUser(false);
+        setLoggedIn(false);
+        localStorage.removeItem("token");
+        localStorage.removeItem("loggedInManually");
+        router.push("/login");
       }
     };
 
     checkLogin();
+
+    // Listen to storage events (like logout from another tab)
     window.addEventListener("storage", checkLogin);
     return () => window.removeEventListener("storage", checkLogin);
-  }, []);
+  }, [router]);
 
   const handleLogout = async () => {
     const token = localStorage.getItem("token");
@@ -56,6 +77,7 @@ export default function Navbar() {
       }
     }
     localStorage.removeItem("token");
+    localStorage.removeItem("loggedInManually");
     window.dispatchEvent(new Event("storage"));
     setLoggedIn(false);
     setIsAdminUser(false);
@@ -105,7 +127,10 @@ export default function Navbar() {
           <Link href="/settings" className="flex items-center gap-1 hover:text-[#29C48E]/80">
             <i className="codicon codicon-gear !text-[20px]" /> Settings
           </Link>
-          <button onClick={handleLogout} className="flex items-center gap-1 hover:text-[#29C48E]/80">
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-1 hover:text-[#29C48E]/80"
+          >
             <i className="codicon codicon-sign-out !text-[20px]" /> Logout
           </button>
         </>
@@ -151,9 +176,7 @@ export default function Navbar() {
           <div className="flex flex-col gap-2 border-b border-gray-400 pb-3">
             {links}
           </div>
-          <div className="flex flex-col gap-2 pt-2">
-            {rightLinks}
-          </div>
+          <div className="flex flex-col gap-2 pt-2">{rightLinks}</div>
         </div>
       )}
     </nav>
