@@ -3,6 +3,15 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from fastapi.responses import RedirectResponse
 from sqlalchemy.exc import NoResultFound
+from typing import AsyncGenerator
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.db import session_genr
+from app.db.models import User as UserDB
+from pydantic import BaseModel, EmailStr
+from sqlalchemy.future import select
+async def get_session() -> AsyncGenerator[AsyncSession, None]:
+    async with session_genr() as session:
+        yield session
 
 from app.models.user import (
     UserReg,
@@ -26,11 +35,36 @@ from app.user import (
 )
 from app.utils.email_utils import send_verification_email
 from app.config import FRONTEND_BASE_URL, VERIFY_USER_EMAIL
-
+from app.utils.email_utils import send_forgot_password_email 
 router = APIRouter(
     prefix="/user",
     tags=["user"],
 )
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+@router.post("/email/forgot-password")
+async def send_forgot_password(
+    request: ForgotPasswordRequest,
+    bg_tasks: BackgroundTasks,
+    session=Depends(get_session)
+):
+    # Check if the email exists in the database
+    result = await session.execute(
+        select(UserDB).where(UserDB.email == request.email)
+    )
+    user = result.scalars().first()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No account found with that email"
+        )
+
+    # Queue background task to send the email
+    bg_tasks.add_task(send_forgot_password_email, user)
+
+    return {"message": "Password reset email has been sent."}
 
 
 @router.post("/add", status_code=status.HTTP_201_CREATED)
@@ -152,3 +186,42 @@ async def get_other_user_details(user_id: int) -> UserPub:
 @router.get("s")
 async def get_user_list() -> UserPubList:
     return await get_user_pub_list()
+from pydantic import BaseModel, EmailStr
+
+class ResetPasswordRequest(BaseModel):
+    username: str
+    email: EmailStr
+    new_password: str
+
+@router.put("/reset-password")
+async def reset_password(request: ResetPasswordRequest):
+    async with session_genr() as session:
+        result = await session.execute(
+            select(UserDB).where(
+                UserDB.username == request.username,
+                UserDB.email == request.email,
+            )
+        )
+        user = result.scalars().first()
+        if not user:
+            raise HTTPException(
+                status_code=404,
+                detail="User with provided username and email not found",
+            )
+
+        details = UserUpdateInternal(
+            username=None,
+            email=None,
+            password=request.new_password,
+            admin=None,
+            email_verified=None,
+        )
+
+        success = await update_user(user.id, details)
+        if not success:
+            raise HTTPException(
+                status_code=400,
+                detail="Failed to update password",
+            )
+
+    return {"message": "Password updated successfully"}
