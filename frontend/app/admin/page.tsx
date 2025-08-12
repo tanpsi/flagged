@@ -472,33 +472,27 @@ export default function AdminDashboard() {
           </thead>
           <tbody>
             {users.map((u, i) => (
-              <tr key={i} className="text-center border-b hover:bg-blue-100 transition text-lg font-['Jaini_Purva']">
+              <tr
+                key={i}
+                className="text-center border-b hover:bg-blue-100 transition text-lg font-['Jaini_Purva']"
+              >
                 <td>{u.name}</td>
                 <td>{u.points}</td>
                 <td>{u.team_name || 'N/A'}</td>
                 <td className="text-lg">
-                  <button
-                    onClick={() => console.log(`Edit functionality for user ${u.name} not yet implemented`)}
-                    className="text-blue-600 cursor-pointer hover:underline hover:text-blue-800 transition mr-2"
-                  >
-                    Edit
-                  </button>
-                  {/* Conditional rendering for the "Ban" button */}
                   {u.name !== 'admin' && (
-                    <>
-                      |
-                      <button
-                        onClick={() => handleDeleteUser(u.id, u.name)}
-                        className="text-red-600 cursor-pointer hover:underline hover:text-red-800 transition ml-2"
-                      >
-                        Ban
-                      </button>
-                    </>
+                    <button
+                      onClick={() => handleDeleteUser(u.id, u.name)}
+                      className="text-red-600 cursor-pointer hover:underline hover:text-red-800 transition"
+                    >
+                      Ban
+                    </button>
                   )}
                 </td>
               </tr>
             ))}
           </tbody>
+
         </table>
       </section>
 
@@ -511,9 +505,25 @@ export default function AdminDashboard() {
           </thead>
           <tbody>
             {teams.map((t, i) => (
-              <tr key={i} className="text-center text-lg border-b hover:bg-blue-100 font-['Jaini_Purva'] transition"><td>{t.name}</td><td>{t.points}</td><td>{t.country}</td><td className="text-lg"><button onClick={() => console.log(`Edit functionality for team ${t.name} not yet implemented`)} className="text-blue-600 cursor-pointer hover:underline hover:text-blue-800 transition mr-2">Edit</button>| <button onClick={() => handleDeleteTeam(t.id, t.name)} className="text-red-600 cursor-pointer hover:underline hover:text-red-800 transition ml-2">Ban</button></td></tr>
+              <tr
+                key={i}
+                className="text-center text-lg border-b hover:bg-blue-100 font-['Jaini_Purva'] transition"
+              >
+                <td>{t.name}</td>
+                <td>{t.points}</td>
+                <td>{t.country}</td>
+                <td className="text-lg">
+                  <button
+                    onClick={() => handleDeleteTeam(t.id, t.name)}
+                    className="text-red-600 cursor-pointer hover:underline hover:text-red-800 transition"
+                  >
+                    Ban
+                  </button>
+                </td>
+              </tr>
             ))}
           </tbody>
+
         </table>
       </section>
 
